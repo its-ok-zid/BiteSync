@@ -6,7 +6,8 @@ BiteSync is a production-grade food delivery backend built to demonstrate enterp
 
 This project is structured as a Maven Multi-Module Monorepo. It implements strict CQRS, Event-Driven choreographies via Apache Kafka, and the Saga pattern for distributed transactions.
 
-*(Insert Mermaid Architecture Diagram Here)*
+![Uploading mermaid-diagram.png…]()
+
 
 ## 🚀 Tech Stack & Core Patterns
 
@@ -37,10 +38,6 @@ This project is structured as a Maven Multi-Module Monorepo. It implements stric
 * **ShedLock**: Distributed locking for concurrent cron-job schedulers.
 * **Micrometer & OpenTelemetry**: W3C Trace Context propagation across microservices.
 * **Prometheus & Grafana**: Time-series metrics and dashboarding.
-
-### Architecture Diagram 
-<img width="3258" height="2064" alt="mermaid-diagram" src="https://github.com/user-attachments/assets/ee5930cc-dda6-4934-b44b-b7eb20dd0a83" />
-
 
 ## 🛠 Local Development Setup
 
