@@ -9,8 +9,8 @@ eureka:
   instance:
     hostname: localhost
   client:
-    # Do not register with itself
     register-with-eureka: false
     fetch-registry: false
   server:
     wait-time-in-ms-when-sync-empty: 0
+    enable-self-preservation: false # Disables the red emergency warning locally
