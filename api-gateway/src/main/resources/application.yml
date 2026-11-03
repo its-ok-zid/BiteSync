@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: api-gateway
+  security:
+      oauth2:
+        resourceserver:
+          jwt:
+            # The Gateway will call this URL to fetch the Public Key to verify incoming tokens
+            jwk-set-uri: http://localhost:8081/api/auth/certs
   cloud:
     gateway:
       discovery:

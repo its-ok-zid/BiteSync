@@ -27,18 +27,8 @@ import java.security.interfaces.RSAPublicKey;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final RsaKeyProperties rsaKeys;
-
-    public SecurityConfig() {
-        // Generate a new RSA Key Pair on application startup
-        KeyPair pair = generateRsaKey();
-        this.rsaKeys = new RsaKeyProperties(
-                (RSAPublicKey) pair.getPublic(),
-                (RSAPrivateKey) pair.getPrivate()
-        );
-    }
-
-    private KeyPair generateRsaKey() {
+    @Bean
+    public KeyPair rsaKeyPair() {
         try {
             KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
             keyPairGenerator.initialize(2048);
@@ -53,12 +43,13 @@ public class SecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/actuator/health").permitAll()
+                        // Add "/api/auth/certs" to the permitAll list
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/certs", "/actuator/health").permitAll()
                         .anyRequest().authenticated()
                 )
                 // Configure OAuth2 Resource Server to validate JWTs using the public key
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.decoder(jwtDecoder()))
+                        .jwt(jwt -> jwt.decoder(jwtDecoder(rsaKeyPair())))
                 )
                 // Force stateless sessions (no JSESSIONID cookies)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -66,13 +57,15 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JwtDecoder jwtDecoder() {
-        return NimbusJwtDecoder.withPublicKey(rsaKeys.publicKey()).build();
+    public JwtDecoder jwtDecoder(KeyPair rsaKeyPair) {
+        return NimbusJwtDecoder.withPublicKey((RSAPublicKey) rsaKeyPair.getPublic()).build();
     }
 
     @Bean
-    public JwtEncoder jwtEncoder() {
-        JWK jwk = new RSAKey.Builder(rsaKeys.publicKey()).privateKey(rsaKeys.privateKey()).build();
+    public JwtEncoder jwtEncoder(KeyPair rsaKeyPair) {
+        JWK jwk = new RSAKey.Builder((RSAPublicKey) rsaKeyPair.getPublic())
+                .privateKey((RSAPrivateKey) rsaKeyPair.getPrivate())
+                .build();
         JWKSource<SecurityContext> jwks = new ImmutableJWKSet<>(new JWKSet(jwk));
         return new NimbusJwtEncoder(jwks);
     }
