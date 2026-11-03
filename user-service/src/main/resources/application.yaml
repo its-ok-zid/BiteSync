@@ -1,3 +1,32 @@
+server:
+  port: 8081
+
 spring:
   application:
     name: user-service
+
+  datasource:
+    # Connects to the local PostgreSQL Docker container we started
+    url: jdbc:postgresql://localhost:5432/bitesync_db
+    username: bitesync_admin
+    password: password123
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    # NEVER use 'update' in production microservices. We strictly use Flyway.
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: true # Helpful for learning/debugging
+
+  flyway:
+    enabled: true
+    # Flyway will execute scripts found in classpath:db/migration
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
