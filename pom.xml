@@ -27,6 +27,8 @@
     <modules>
         <module>discovery-server</module>
         <module>api-gateway</module>
+        <module>bitesync-common</module>
+        <module>user-service</module>
     </modules>
 
     <dependencyManagement>
