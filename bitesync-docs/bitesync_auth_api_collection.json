@@ -1,7 +1,7 @@
 {
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-7890-1234-56789abcdef0",
-		"name": "BiteSync Auth API",
+		"name": "BiteSync Auth API (Gateway)",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -20,12 +20,12 @@
 					"raw": "{\n    \"email\": \"rider1@bitesync.com\",\n    \"password\": \"securepassword\",\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"role\": \"RIDER\"\n}"
 				},
 				"url": {
-					"raw": "http://localhost:8081/api/auth/register",
+					"raw": "http://localhost:8080/api/auth/register",
 					"protocol": "http",
 					"host": [
 						"localhost"
 					],
-					"port": "8081",
+					"port": "8080",
 					"path": [
 						"api",
 						"auth",
@@ -50,12 +50,12 @@
 					"raw": "{\n    \"email\": \"rider1@bitesync.com\",\n    \"password\": \"securepassword\"\n}"
 				},
 				"url": {
-					"raw": "http://localhost:8081/api/auth/login",
+					"raw": "http://localhost:8080/api/auth/login",
 					"protocol": "http",
 					"host": [
 						"localhost"
 					],
-					"port": "8081",
+					"port": "8080",
 					"path": [
 						"api",
 						"auth",
@@ -71,12 +71,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:8081/api/auth/certs",
+					"raw": "http://localhost:8080/api/auth/certs",
 					"protocol": "http",
 					"host": [
 						"localhost"
 					],
-					"port": "8081",
+					"port": "8080",
 					"path": [
 						"api",
 						"auth",
@@ -97,12 +97,12 @@
 					}
 				],
 				"url": {
-					"raw": "http://localhost:8081/api/auth/logout",
+					"raw": "http://localhost:8080/api/auth/logout",
 					"protocol": "http",
 					"host": [
 						"localhost"
 					],
-					"port": "8081",
+					"port": "8080",
 					"path": [
 						"api",
 						"auth",
