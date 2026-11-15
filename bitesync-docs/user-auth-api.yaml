@@ -1,0 +1,223 @@
+openapi: 3.0.3
+info:
+  title: BiteSync Auth API
+  description: Enterprise authentication service for BiteSync using stateless JWTs, RSA key pairs, and Redis-backed token blacklisting.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: API Gateway (Routes to User Service)
+  - url: http://localhost:8081
+    description: Direct User Service (Bypass Gateway)
+
+paths:
+  /api/auth/register:
+    post:
+      summary: Register a new user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_String'
+        '400':
+          description: Validation Error or Email Already Exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/login:
+    post:
+      summary: Authenticate user and receive JWT
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_LoginResponse'
+        '400':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/logout:
+    post:
+      summary: Logout user and blacklist JWT in Redis
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_String'
+        '401':
+          description: Unauthorized (Missing or Invalid Token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/certs:
+    get:
+      summary: Get RSA Public Keys (JWK Set)
+      description: Used by the API Gateway to mathematically verify JWT signatures.
+      tags:
+        - Security
+      responses:
+        '200':
+          description: JWK Set containing public keys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JWKSet'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+      properties:
+        email:
+          type: string
+          format: email
+          example: rider1@bitesync.com
+        password:
+          type: string
+          example: securepassword
+        firstName:
+          type: string
+          example: John
+        lastName:
+          type: string
+          example: Doe
+        role:
+          type: string
+          enum: [CUSTOMER, RIDER, RESTAURANT_OWNER]
+          default: CUSTOMER
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: rider1@bitesync.com
+        password:
+          type: string
+          example: securepassword
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Signed JWT Access Token
+        userId:
+          type: string
+          format: uuid
+
+    ApiResponse_String:
+      type: object
+      properties:
+        traceId:
+          type: string
+          format: uuid
+        message:
+          type: string
+        data:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponse_LoginResponse:
+      type: object
+      properties:
+        traceId:
+          type: string
+          format: uuid
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/LoginResponse'
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        traceId:
+          type: string
+          format: uuid
+        errorCode:
+          type: string
+          example: AUTH_001
+        message:
+          type: string
+          example: Email already exists
+        path:
+          type: string
+          example: /api/auth/register
+        status:
+          type: integer
+          example: 400
+        timestamp:
+          type: string
+          format: date-time
+
+    JWKSet:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            properties:
+              kty:
+                type: string
+                example: RSA
+              e:
+                type: string
+                example: AQAB
+              n:
+                type: string
+                description: RSA Modulus
