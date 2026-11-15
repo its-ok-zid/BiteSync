@@ -1,3 +1,3 @@
 package com.bitesync.userservice.dto;
 
-public record LoginResponse(String token, String userId) {}
+public record LoginResponse(String accessToken, String refreshToken, String userId) {}
