@@ -13,7 +13,7 @@ import com.bitesync.userservice.repository.UserRepository;
 import com.bitesync.userservice.service.TokenService;
 import com.bitesync.userservice.service.UserAuthService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -60,10 +60,10 @@ public class AuthController {
         return new JWKSet(rsaKey).toJSONObject();
     }
 
- @PostMapping("/register")
-    public ResponseEntity<ApiResponse<String>> register(@RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
+    // Added @Valid to enforce constraints
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse<String>> register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
         if (userRepository.findByEmail(request.email()).isPresent()) {
-            // FINALLY USING OUR CUSTOM EXCEPTION!
             throw new BiteSyncException("Email already exists", "AUTH_001");
         }
 
@@ -81,8 +81,9 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    // Added @Valid to enforce constraints
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new BiteSyncException("Invalid credentials", "AUTH_002"));
 
@@ -130,9 +131,10 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    // Added @Valid to enforce constraints
     @PutMapping("/profile")
     public ResponseEntity<ApiResponse<String>> updateProfile(
-            @RequestBody ProfileUpdateRequest request,
+            @Valid @RequestBody ProfileUpdateRequest request,
             @AuthenticationPrincipal Jwt jwt,
             HttpServletRequest httpRequest) {
 
