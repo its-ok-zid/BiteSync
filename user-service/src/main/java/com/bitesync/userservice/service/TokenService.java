@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -28,13 +29,19 @@ public class TokenService {
     // 1. Generates the short-lived RSA JWT (Access Token)
     public String generateAccessToken(User user) {
         Instant now = Instant.now();
+
+        // Convert Set<Role> to List<String>
+        List<String> roleNames = user.getRoles().stream()
+                .map(Enum::name)
+                .toList();
+
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("bitesync-user-service")
                 .issuedAt(now)
-                .expiresAt(now.plus(15, ChronoUnit.MINUTES)) // Changed to 15 mins for security
+                .expiresAt(now.plus(15, ChronoUnit.MINUTES))
                 .subject(user.getId().toString())
                 .claim("email", user.getEmail())
-                .claim("role", user.getRole())
+                .claim("roles", roleNames) // Changed "role" to "roles" and passing the list!
                 .build();
 
         return this.encoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();

@@ -5,6 +5,7 @@ import com.bitesync.common.exception.BiteSyncException;
 import com.bitesync.common.security.TokenBlacklistService;
 import com.bitesync.userservice.dto.*;
 import com.bitesync.userservice.model.RefreshToken;
+import com.bitesync.userservice.model.Role;
 import com.bitesync.userservice.repository.RefreshTokenRepository;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -16,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -25,8 +27,7 @@ import java.security.KeyPair;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -67,14 +68,17 @@ public class AuthController {
             throw new BiteSyncException("Email already exists", "AUTH_001");
         }
 
+        Set<Role> defaultRoles = new HashSet<>();
+        defaultRoles.add(Role.CUSTOMER);
+
         User user = new User();
         user.setEmail(request.email());
         // Hash the password before saving to PostgreSQL
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setFirstName(request.firstName());
         user.setLastName(request.lastName());
-        user.setRole(request.role() != null ? request.role() : "CUSTOMER");
-
+        // Give new users the CUSTOMER role by default in a Set
+        user.setRoles(defaultRoles);
         userRepository.save(user);
 
         ApiResponse<String> response = new ApiResponse<>(userAuthService.getTraceId(httpRequest), "User registered successfully", null);
@@ -95,7 +99,14 @@ public class AuthController {
         String accessToken = tokenService.generateAccessToken(user);
         RefreshToken refreshToken = tokenService.createRefreshToken(user);
 
-        LoginResponse data = new LoginResponse(accessToken, refreshToken.getToken(), user.getId().toString());
+        // Convert Set to comma-separated string for the LoginResponse UI
+        List<String> roleNames = user.getRoles().stream().map(Enum::name).toList();
+        LoginResponse data = new LoginResponse(
+                accessToken,
+                refreshToken.getToken(),
+                user.getId().toString(),
+                String.join(",", roleNames) // e.g. "CUSTOMER,RIDER"
+        );
         ApiResponse<LoginResponse> response = new ApiResponse<>(userAuthService.getTraceId(httpRequest), "Login successful", data);
 
         return ResponseEntity.ok(response);
@@ -155,6 +166,28 @@ public class AuthController {
         ApiResponse<String> response = new ApiResponse<>(
                 userAuthService.getTraceId(httpRequest),
                 "Profile updated successfully",
+                null
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/users/{userId}/roles") // Pluralized endpoint
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<String>> addRole(
+            @PathVariable UUID userId,
+            @RequestParam Role newRole,
+            HttpServletRequest httpRequest) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BiteSyncException("User not found", "AUTH_003"));
+
+        // APPEND the role instead of replacing it
+        user.getRoles().add(newRole);
+        userRepository.save(user);
+
+        ApiResponse<String> response = new ApiResponse<>(
+                userAuthService.getTraceId(httpRequest),
+                "User role upgraded successfully",
                 null
         );
         return ResponseEntity.ok(response);

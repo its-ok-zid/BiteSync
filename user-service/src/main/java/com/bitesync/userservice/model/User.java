@@ -2,6 +2,8 @@ package com.bitesync.userservice.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -24,8 +26,11 @@ public class User {
     @Column(name = "last_name")
     private String lastName;
 
-    @Column(nullable = false)
-    private String role; // e.g., CUSTOMER, RIDER, RESTAURANT_OWNER
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    private Set<Role> roles = new HashSet<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -54,6 +59,6 @@ public class User {
     public void setFirstName(String firstName) { this.firstName = firstName; }
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
+    public Set<Role> getRoles() { return roles; }
+    public void setRoles(Set<Role> roles) { this.roles = roles; }
 }

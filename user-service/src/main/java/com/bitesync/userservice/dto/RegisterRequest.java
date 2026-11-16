@@ -17,8 +17,5 @@ public record RegisterRequest(
         String firstName,
 
         @NotBlank(message = "Last name cannot be blank")
-        String lastName,
-
-        @NotBlank(message = "Role cannot be blank")
-        String role
+        String lastName
 ) {}
