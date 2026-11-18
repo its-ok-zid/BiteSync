@@ -1,0 +1,176 @@
+{
+    "info": {
+        "_postman_id": "bitesync-auth-v6-rbac",
+        "name": "BiteSync Auth API (RBAC & Admin)",
+        "description": "Tests the full Role-Based Access Control flow. Logs in as the seeded Admin, registers a new customer, and has the Admin upgrade the customer to a RIDER.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8080",
+            "type": "string"
+        },
+        {
+            "key": "adminAccessToken",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "customerAccessToken",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "newUserId",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "1. Login as Super Admin (Flyway Seeded)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                            "const responseJson = pm.response.json();",
+                            "pm.collectionVariables.set(\"adminAccessToken\", responseJson.data.accessToken);"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"email\": \"admin@bitesync.com\",\n    \"password\": \"admin123\"\n}"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/auth/login",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "auth",
+                        "login"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "2. Register New User (Defaults to CUSTOMER)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"email\": \"new.rider@bitesync.com\",\n    \"password\": \"securepassword\",\n    \"firstName\": \"Speedy\",\n    \"lastName\": \"Delivery\"\n}"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/auth/register",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "auth",
+                        "register"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "3. Login as New User (Capture ID)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                            "const responseJson = pm.response.json();",
+                            "pm.collectionVariables.set(\"customerAccessToken\", responseJson.data.accessToken);",
+                            "pm.collectionVariables.set(\"newUserId\", responseJson.data.userId);"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"email\": \"new.rider@bitesync.com\",\n    \"password\": \"securepassword\"\n}"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/auth/login",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "auth",
+                        "login"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "4. Admin Upgrades User to RIDER",
+            "request": {
+                "auth": {
+                    "type": "bearer",
+                    "bearer": [
+                        {
+                            "key": "token",
+                            "value": "{{adminAccessToken}}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "method": "PUT",
+                "header": [],
+                "url": {
+                    "raw": "{{baseUrl}}/api/auth/users/{{newUserId}}/role?newRole=RIDER",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "auth",
+                        "users",
+                        "{{newUserId}}",
+                        "role"
+                    ],
+                    "query": [
+                        {
+                            "key": "newRole",
+                            "value": "RIDER"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}
