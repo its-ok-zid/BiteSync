@@ -171,18 +171,17 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/users/{userId}/roles") // Pluralized endpoint
+    @PutMapping("/users/{userId}/roles")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<String>> addRole(
-            @PathVariable UUID userId,
-            @RequestParam Role newRole,
+            @PathVariable("userId") UUID userId, // PathVariables still need explicit names!
+            @Valid @RequestBody RoleUpdateRequest request, // Upgraded to Request Body!
             HttpServletRequest httpRequest) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BiteSyncException("User not found", "AUTH_003"));
 
-        // APPEND the role instead of replacing it
-        user.getRoles().add(newRole);
+        user.getRoles().add(request.role()); // Use the data from the JSON body
         userRepository.save(user);
 
         ApiResponse<String> response = new ApiResponse<>(
