@@ -17,8 +17,7 @@ public class GlobalExceptionHandler {
     // Extracts the distributed trace ID injected by the API Gateway or generates a fallback
     private String getTraceId(HttpServletRequest request) {
         String traceId = request.getHeader("X-B3-TraceId");
-        return (traceId != null) ? traceId : UUID.randomUUID().toString();
-    }
+        return (traceId != null && !traceId.isBlank()) ? traceId : UUID.randomUUID().toString();    }
 
     // Handles intentional business logic exceptions across all microservices
     @ExceptionHandler(BiteSyncException.class)

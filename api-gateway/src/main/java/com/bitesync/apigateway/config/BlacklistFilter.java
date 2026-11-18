@@ -19,14 +19,13 @@ public class BlacklistFilter implements WebFilter {
         this.redisTemplate = redisTemplate;
     }
 
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+@Override
+public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+    String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-
-            // Asynchronously check Redis to see if the token exists in the blacklist
+    if (authHeader != null && authHeader.startsWith("Bearer ")) {
+        String token = authHeader.substring(7).trim();
+        if (!token.isEmpty()) {
             return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
                     .flatMap(isBlacklisted -> {
                         if (Boolean.TRUE.equals(isBlacklisted)) {
@@ -38,7 +37,8 @@ public class BlacklistFilter implements WebFilter {
                         return chain.filter(exchange);
                     });
         }
-
-        return chain.filter(exchange);
     }
+
+    return chain.filter(exchange);
+}
 }

@@ -113,7 +113,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<RefreshTokenResponse>> refreshToken(@RequestBody RefreshTokenRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<ApiResponse<RefreshTokenResponse>> refreshToken( @Valid @RequestBody RefreshTokenRequest request, HttpServletRequest httpRequest) {
         String requestRefreshToken = request.refreshToken();
 
         // Find the token in the DB, verify it hasn't expired, and issue a new Access Token
@@ -129,18 +129,20 @@ public class AuthController {
                 .orElseThrow(() -> new BiteSyncException("Refresh token is invalid or not found", "AUTH_005"));
     }
 
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<String>> logout(@AuthenticationPrincipal Jwt jwt, HttpServletRequest httpRequest) {
-        String tokenValue = jwt.getTokenValue();
-        Duration ttl = Duration.between(Instant.now(), jwt.getExpiresAt());
+@PostMapping("/logout")
+public ResponseEntity<ApiResponse<String>> logout(@AuthenticationPrincipal Jwt jwt, HttpServletRequest httpRequest) {
+    String tokenValue = jwt.getTokenValue();
+    Duration ttl = Duration.between(Instant.now(), jwt.getExpiresAt());
 
-        if (!ttl.isNegative()) {
-            tokenBlacklistService.addToBlacklist(tokenValue, ttl);
-        }
-
-        ApiResponse<String> response = new ApiResponse<>(userAuthService.getTraceId(httpRequest), "Logged out successfully", null);
-        return ResponseEntity.ok(response);
+    if (!ttl.isNegative() && !ttl.isZero()) {
+        tokenBlacklistService.addToBlacklist(tokenValue, ttl);
     }
+
+    tokenService.revokeRefreshTokensByUserId(UUID.fromString(jwt.getSubject()));
+
+    ApiResponse<String> response = new ApiResponse<>(userAuthService.getTraceId(httpRequest), "Logged out successfully", null);
+    return ResponseEntity.ok(response);
+}
 
     // Added @Valid to enforce constraints
     @PutMapping("/profile")

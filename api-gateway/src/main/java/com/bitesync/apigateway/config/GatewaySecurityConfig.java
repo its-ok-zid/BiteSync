@@ -16,7 +16,7 @@ public class GatewaySecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
                         // Allow unauthenticated access to login, register, and the certs endpoint
-                        .pathMatchers("/api/auth/**").permitAll()
+                        .pathMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/certs").permitAll()
                         // ALL other requests routed through the gateway must have a valid JWT
                         .anyExchange().authenticated()
                 )

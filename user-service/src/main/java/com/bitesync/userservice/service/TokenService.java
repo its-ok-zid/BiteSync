@@ -52,6 +52,8 @@ public class TokenService {
     public RefreshToken createRefreshToken(User user) {
         // Delete any existing refresh token for this user so they only have 1 valid session
         refreshTokenRepository.deleteByUser(user);
+        refreshTokenRepository.flush();
+
 
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUser(user);
@@ -59,6 +61,11 @@ public class TokenService {
         refreshToken.setToken(UUID.randomUUID().toString()); // Simple secure random string
 
         return refreshTokenRepository.save(refreshToken);
+    }
+
+    @Transactional
+    public void revokeRefreshTokensByUserId(UUID userId) {
+        refreshTokenRepository.deleteByUserId(userId);
     }
 
     // 3. Validates if a refresh token is expired

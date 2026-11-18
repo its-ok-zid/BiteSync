@@ -45,19 +45,28 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            JwtDecoder jwtDecoder,
+            JwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Add "/api/auth/certs" to the permitAll list
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/certs", "/actuator/health").permitAll()
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/refresh",
+                                "/api/auth/certs",
+                                "/actuator/health"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
-                // Configure OAuth2 Resource Server to validate JWTs using the public key
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.decoder(jwtDecoder(rsaKeyPair())))
+                        .jwt(jwt -> jwt
+                                .decoder(jwtDecoder)
+                                .jwtAuthenticationConverter(jwtAuthenticationConverter)
+                        )
                 )
-                // Force stateless sessions (no JSESSIONID cookies)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .build();
     }
@@ -66,7 +75,7 @@ public class SecurityConfig {
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
         grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
-        grantedAuthoritiesConverter.setAuthoritiesClaimName("role");
+        grantedAuthoritiesConverter.setAuthoritiesClaimName("roles"); // Matches TokenService!
 
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
