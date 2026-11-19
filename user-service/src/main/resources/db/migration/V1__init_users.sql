@@ -9,11 +9,3 @@ CREATE TABLE users (
 );
 
 CREATE INDEX idx_users_email ON users(email);
-
--- New Mapping Table
-CREATE TABLE user_roles (
-    user_id UUID NOT NULL,
-    role VARCHAR(50) NOT NULL,
-    PRIMARY KEY (user_id, role),
-    CONSTRAINT fk_user_role FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
