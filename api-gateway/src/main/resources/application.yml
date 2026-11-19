@@ -20,11 +20,13 @@ spring:
       # Explicit routing definitions
       routes:
         - id: user-service
-          # The 'lb://' protocol tells the Gateway to use the LoadBalancer to fetch the IP from Eureka
           uri: lb://user-service
           predicates:
             - Path=/api/users/**, /api/auth/**
-
+        - id: restaurant-service
+          uri: lb://restaurant-service
+          predicates:
+            - Path=/api/restaurants/**
 eureka:
   client:
     service-url:

@@ -2,6 +2,7 @@ package com.bitesync.apigateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -17,6 +18,7 @@ public class GatewaySecurityConfig {
                 .authorizeExchange(exchanges -> exchanges
                         // Allow unauthenticated access to login, register, and the certs endpoint
                         .pathMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/certs").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/restaurants", "/api/restaurants/**").permitAll()
                         // ALL other requests routed through the gateway must have a valid JWT
                         .anyExchange().authenticated()
                 )

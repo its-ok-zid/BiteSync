@@ -29,6 +29,7 @@
         <module>api-gateway</module>
         <module>bitesync-common</module>
         <module>user-service</module>
+        <module>restaurant-service</module>
     </modules>
 
     <dependencyManagement>
