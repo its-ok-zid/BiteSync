@@ -5,11 +5,15 @@ spring:
   application:
     name: api-gateway
   security:
-      oauth2:
-        resourceserver:
-          jwt:
-            # The Gateway will call this URL to fetch the Public Key to verify incoming tokens
-            jwk-set-uri: http://localhost:8081/api/auth/certs
+    oauth2:
+      resourceserver:
+        jwt:
+          # The Gateway calls this URL to fetch the RSA Public Key to verify incoming tokens
+          jwk-set-uri: http://localhost:8081/api/auth/certs
+  data:
+    redis:
+      host: localhost
+      port: 6379
   cloud:
     gateway:
       discovery:
@@ -27,6 +31,7 @@ spring:
           uri: lb://restaurant-service
           predicates:
             - Path=/api/restaurants/**
+
 eureka:
   client:
     service-url:
