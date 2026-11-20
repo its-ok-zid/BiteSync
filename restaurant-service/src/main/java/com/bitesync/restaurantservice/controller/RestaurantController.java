@@ -12,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -104,6 +105,18 @@ public class RestaurantController {
                 resolveTraceId(httpRequest),
                 "Restaurant menu updated successfully",
                 updated
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    // Dev-only inspection endpoint to view live L1 Caffeine RAM state in Chrome
+    // Dev-only inspection endpoint to view live L1 Caffeine RAM state in Chrome
+    @GetMapping("/cache/l1-stats")
+    public ResponseEntity<ApiResponse<L1CacheStatsResponse>> getL1CacheStats(HttpServletRequest httpRequest) {
+        ApiResponse<L1CacheStatsResponse> response = new ApiResponse<>(
+                resolveTraceId(httpRequest),
+                "L1 Caffeine cache snapshot fetched",
+                restaurantService.getL1CacheSnapshot()
         );
         return ResponseEntity.ok(response);
     }

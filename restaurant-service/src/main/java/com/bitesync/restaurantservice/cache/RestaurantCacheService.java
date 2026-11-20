@@ -1,9 +1,11 @@
 package com.bitesync.restaurantservice.cache;
 
+import com.bitesync.restaurantservice.dto.L1CacheStatsResponse;
 import com.bitesync.restaurantservice.dto.RestaurantResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -11,6 +13,8 @@ import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
@@ -66,8 +70,8 @@ public class RestaurantCacheService {
 
     /**
      * Evict-on-write across all tiers:
-     * 1. Delete L2 Redis key
-     * 2. Invalidate local L1 Caffeine immediately
+     * 1. Invalidate local L1 Caffeine immediately
+     * 2. Delete L2 Redis key
      * 3. Broadcast Pub/Sub message so all other pods evict their local L1
      */
     public void evict(String restaurantId) {
@@ -83,6 +87,32 @@ public class RestaurantCacheService {
             log.warn("[CACHE WARN] Failed L2 eviction/PubSub broadcast for restaurantId={}: {}",
                     restaurantId, ex.getMessage());
         }
+    }
+
+    /**
+     * Dev-inspection helper: returns live L1 Caffeine JVM RAM stats and cached keys.
+     */
+    public L1CacheStatsResponse getL1Snapshot() {
+        CacheStats stats = l1Cache.stats();
+        Map<String, String> entries = new LinkedHashMap<>();
+
+        l1Cache.asMap().forEach((key, opt) ->
+                entries.put(
+                        key,
+                        opt.isPresent()
+                                ? "ACTIVE_RESTAURANT (" + opt.get().name() + ")"
+                                : NOT_FOUND_SENTINEL
+                )
+        );
+
+        return new L1CacheStatsResponse(
+                l1Cache.estimatedSize(),
+                stats.hitCount(),
+                stats.missCount(),
+                String.format("%.2f%%", stats.hitRate() * 100),
+                stats.evictionCount(),
+                entries
+        );
     }
 
     private Optional<RestaurantResponse> loadFromL2OrDatabase(
@@ -161,4 +191,5 @@ public class RestaurantCacheService {
             log.warn("[CACHE WARN] Redis DELETE failed for key={}: {}", redisKey, ex.getMessage());
         }
     }
+
 }

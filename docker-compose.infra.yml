@@ -46,6 +46,16 @@ services:
       - "6379:6379"
     restart: unless-stopped
 
+  # Official Browser GUI for L2 Redis Cache & Live Pub/Sub
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: bitesync-redis-insight
+    ports:
+      - "5540:5540"
+    volumes:
+      - redis_insight_data:/data
+    restart: unless-stopped
+
   # Kafka in KRaft Mode (ZooKeeper-less) for Event-Driven Messaging
   kafka:
     image: confluentinc/cp-kafka:7.6.1
@@ -74,3 +84,4 @@ volumes:
   postgres_data:
   mongodb_data:
   kafka_data:
+  redis_insight_data:

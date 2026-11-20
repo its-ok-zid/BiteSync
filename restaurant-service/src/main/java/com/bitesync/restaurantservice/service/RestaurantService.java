@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -39,7 +40,7 @@ public class RestaurantService {
         Restaurant restaurant = new Restaurant();
         restaurant.setOwnerId(ownerId);
         restaurant.setName(request.name().trim());
-        restaurant.setCity(request.city()); // Automatically normalizes cityKey for ESR indexing
+        restaurant.setCity(request.city());
         restaurant.setCuisineTypes(
                 request.cuisineTypes().stream()
                         .map(String::trim)
@@ -174,6 +175,13 @@ public class RestaurantService {
                 .toList();
 
         return new CursorPageResponse<>(summaries, summaries.size(), hasNext, nextRatingCursor, nextIdCursor);
+    }
+
+    /**
+     * Delegates to RestaurantCacheService to inspect live L1 Caffeine RAM state.
+     */
+    public L1CacheStatsResponse getL1CacheSnapshot() {
+        return restaurantCacheService.getL1Snapshot();
     }
 
     private void validateObjectId(String id) {
