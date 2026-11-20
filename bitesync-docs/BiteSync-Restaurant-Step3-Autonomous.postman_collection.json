@@ -1,0 +1,1308 @@
+{
+  "info": {
+    "_postman_id": "bitesync-restaurant-step3-autonomous-v1",
+    "name": "BiteSync Restaurant API (Autonomous E2E - Step 3)",
+    "description": "100% autonomous single-click Postman Collection Runner suite for Sprint 3A Step 3. Routes all traffic through API Gateway (localhost:8080). Generates unique runId per execution so it can be re-run infinitely without DB collisions. Verifies onboarding, JWT sub binding, RBAC, cross-owner isolation, embedded menu persistence, malformed ID guards, and ESR composite cursor pagination.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "runId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cityName",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminAccessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner1Email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner1UserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner1Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner2Email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner2UserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner2Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "restaurant1Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "restaurant2Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "page1ItemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "nextRatingCursor",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "nextIdCursor",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Setup - Login as Super Admin",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@bitesync.com\",\n  \"password\": \"admin123\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const runId = Date.now().toString();",
+              "pm.collectionVariables.set('runId', runId);",
+              "pm.collectionVariables.set('owner1Email', 'owner1.' + runId + '@bitesync.com');",
+              "pm.collectionVariables.set('owner2Email', 'owner2.' + runId + '@bitesync.com');",
+              "pm.collectionVariables.set('cityName', 'Bengaluru-' + runId);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test('Admin accessToken captured', () => {",
+              "    pm.expect(json.data.accessToken).to.be.a('string').and.not.be.empty;",
+              "    pm.expect(json.data.role).to.include('ADMIN');",
+              "});",
+              "pm.collectionVariables.set('adminAccessToken', json.data.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Setup - Register Owner 1 (Defaults to CUSTOMER)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "register"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{owner1Email}}\",\n  \"password\": \"securepassword123\",\n  \"firstName\": \"Aarav\",\n  \"lastName\": \"Sharma\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 201 Created', () => pm.response.to.have.status(201));",
+              "const json = pm.response.json();",
+              "pm.test('Standard ApiResponse returned', () => {",
+              "    pm.expect(json.traceId).to.be.a('string');",
+              "    pm.expect(json.message).to.eql('User registered successfully');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Setup - Login Owner 1 (CUSTOMER JWT)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{owner1Email}}\",\n  \"password\": \"securepassword123\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test('User starts with CUSTOMER role only', () => {",
+              "    pm.expect(json.data.role).to.eql('CUSTOMER');",
+              "});",
+              "pm.collectionVariables.set('owner1Token', json.data.accessToken);",
+              "pm.collectionVariables.set('owner1UserId', json.data.userId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Security - Unauthenticated Apply Blocked (401)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/apply",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "apply"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ghost Kitchen\",\n  \"city\": \"{{cityName}}\",\n  \"cuisineTypes\": [\n    \"Fast Food\"\n  ]\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Unauthenticated POST /apply returns 401 Unauthorized', () => {",
+              "    pm.response.to.have.status(401);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Validation - Apply with Invalid Fields Rejected (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/apply",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "apply"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{owner1Token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"A\",\n  \"city\": \"\",\n  \"cuisineTypes\": []\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Invalid payload returns 400 Bad Request', () => pm.response.to.have.status(400));",
+              "const json = pm.response.json();",
+              "pm.test('Returns standardized VALIDATION_ERROR', () => {",
+              "    pm.expect(json.errorCode).to.eql('VALIDATION_ERROR');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Onboarding - Owner 1 Applies for Restaurant #1 (201 PENDING_APPROVAL)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/apply",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "apply"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{owner1Token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Spice Route Biryani\",\n  \"city\": \"{{cityName}}\",\n  \"cuisineTypes\": [\n    \"Biryani\",\n    \"North Indian\",\n    \"Biryani\"\n  ]\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 201 Created', () => pm.response.to.have.status(201));",
+              "const json = pm.response.json();",
+              "pm.test('Restaurant created as PENDING_APPROVAL bound to JWT sub', () => {",
+              "    pm.expect(json.data.id).to.be.a('string').and.not.be.empty;",
+              "    pm.expect(json.data.ownerId).to.eql(pm.collectionVariables.get('owner1UserId'));",
+              "    pm.expect(json.data.status).to.eql('PENDING_APPROVAL');",
+              "    pm.expect(json.data.cuisineTypes).to.have.lengthOf(2);",
+              "    pm.expect(json.data.createdAt).to.not.be.null;",
+              "});",
+              "pm.collectionVariables.set('restaurant1Id', json.data.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Visibility - Pending Restaurant Hidden from Public GET (400 REST_001)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "{{restaurant1Id}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Pending restaurant is NOT publicly visible', () => pm.response.to.have.status(400));",
+              "const json = pm.response.json();",
+              "pm.test('Returns REST_001 error code', () => pm.expect(json.errorCode).to.eql('REST_001'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. RBAC - CUSTOMER Cannot Approve Restaurant (403)",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/approve",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "{{restaurant1Id}}",
+            "approve"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{owner1Token}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('CUSTOMER gets 403 Forbidden on /approve', () => pm.response.to.have.status(403));",
+              "const json = pm.response.json();",
+              "pm.test('Returns FORBIDDEN_ACCESS', () => pm.expect(json.errorCode).to.eql('FORBIDDEN_ACCESS'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. RBAC - CUSTOMER Without RESTAURANT_OWNER Role Cannot Edit Menu (403)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/menu",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "{{restaurant1Id}}",
+            "menu"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{owner1Token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"menuCategories\": [\n    {\n      \"name\": \"Starters\",\n      \"items\": [\n        {\n          \"name\": \"Paneer Tikka\",\n          \"price\": 240.0,\n          \"isAvailable\": true,\n          \"addons\": [\n            \"Mint Chutney\"\n          ]\n        }\n      ]\n    }\n  ]\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('CUSTOMER gets 403 Forbidden on /menu', () => pm.response.to.have.status(403));",
+              "const json = pm.response.json();",
+              "pm.test('Returns FORBIDDEN_ACCESS', () => pm.expect(json.errorCode).to.eql('FORBIDDEN_ACCESS'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. RBAC - Admin Grants RESTAURANT_OWNER Role to Owner 1",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/users/{{owner1UserId}}/roles",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "users",
+            "{{owner1UserId}}",
+            "roles"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"role\": \"RESTAURANT_OWNER\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Role upgrade returns 200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('Confirmation message returned', () => pm.expect(pm.response.json().message).to.eql('User role upgraded successfully'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Auth - Owner 1 Re-Logins to Get RESTAURANT_OWNER JWT",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{owner1Email}}\",\n  \"password\": \"securepassword123\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test('New JWT/response contains both CUSTOMER and RESTAURANT_OWNER', () => {",
+              "    pm.expect(json.data.role).to.include('CUSTOMER');",
+              "    pm.expect(json.data.role).to.include('RESTAURANT_OWNER');",
+              "});",
+              "pm.collectionVariables.set('owner1Token', json.data.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. State Guard - Owner Cannot Edit Menu While PENDING_APPROVAL (400 REST_005)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/menu",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "{{restaurant1Id}}",
+            "menu"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{owner1Token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"menuCategories\": [\n    {\n      \"name\": \"Signature Biryanis\",\n      \"items\": [\n        {\n          \"name\": \"Chicken Dum Biryani\",\n          \"price\": 320.0,\n          \"isAvailable\": true,\n          \"addons\": [\n            \"Raita\"\n          ]\n        }\n      ]\n    }\n  ]\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Blocked with 400 before approval', () => pm.response.to.have.status(400));",
+              "const json = pm.response.json();",
+              "pm.test('Returns REST_005 error code', () => pm.expect(json.errorCode).to.eql('REST_005'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Onboarding - Admin Approves Restaurant #1 (200 ACTIVE)",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/approve",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "{{restaurant1Id}}",
+            "approve"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200 OK', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test('Restaurant transitioned to ACTIVE', () => {",
+              "    pm.expect(json.data.id).to.eql(pm.collectionVariables.get('restaurant1Id'));",
+              "    pm.expect(json.data.status).to.eql('ACTIVE');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. State Guard - Re-Approving Active Restaurant Rejected (400 REST_004)",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/approve",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "{{restaurant1Id}}",
+            "approve"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Re-approval returns 400 Bad Request', () => pm.response.to.have.status(400));",
+              "pm.test('Returns REST_004 error code', () => pm.expect(pm.response.json().errorCode).to.eql('REST_004'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15. Menu - Owner 1 Updates Embedded Menu on Restaurant #1 (200 OK)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/menu",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "{{restaurant1Id}}",
+            "menu"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{owner1Token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"menuCategories\": [\n    {\n      \"name\": \"Signature Biryanis\",\n      \"items\": [\n        {\n          \"itemId\": \"item-101\",\n          \"name\": \"Hyderabadi Chicken Dum Biryani\",\n          \"price\": 320.0,\n          \"isAvailable\": true,\n          \"addons\": [\n            \"Extra Raita\",\n            \"Boiled Egg\"\n          ]\n        },\n        {\n          \"name\": \"Paneer Subz Biryani\",\n          \"price\": 270.0,\n          \"isAvailable\": true,\n          \"addons\": [\n            \"Mirchi Ka Salan\"\n          ]\n        }\n      ]\n    }\n  ]\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200 OK', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test('Embedded menu categories & items saved accurately', () => {",
+              "    pm.expect(json.data.menuCategories).to.have.lengthOf(1);",
+              "    const items = json.data.menuCategories[0].items;",
+              "    pm.expect(items).to.have.lengthOf(2);",
+              "    pm.expect(items[0].itemId).to.eql('item-101');",
+              "    pm.expect(items[0].price).to.eql(320);",
+              "    pm.expect(items[0].isAvailable).to.eql(true);",
+              "    pm.expect(items[1].itemId).to.match(/^item-/);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16. Setup - Register Owner 2 (Cross-Owner Security Test)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "register"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{owner2Email}}\",\n  \"password\": \"securepassword123\",\n  \"firstName\": \"Riya\",\n  \"lastName\": \"Verma\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Owner 2 registered (201)', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17. Setup - Login Owner 2 (Capture ID)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{owner2Email}}\",\n  \"password\": \"securepassword123\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('owner2UserId', pm.response.json().data.userId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18. Setup - Admin Grants RESTAURANT_OWNER Role to Owner 2",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/users/{{owner2UserId}}/roles",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "users",
+            "{{owner2UserId}}",
+            "roles"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"role\": \"RESTAURANT_OWNER\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Owner 2 upgraded (200)', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19. Setup - Login Owner 2 (RESTAURANT_OWNER JWT)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{owner2Email}}\",\n  \"password\": \"securepassword123\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('owner2Token', pm.response.json().data.accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "20. Ownership Guard - Owner 2 Cannot Tamper with Owner 1's Menu (403)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/menu",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "{{restaurant1Id}}",
+            "menu"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{owner2Token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"menuCategories\": [\n    {\n      \"name\": \"Hacked Menu\",\n      \"items\": [\n        {\n          \"name\": \"Free Food\",\n          \"price\": 1.0,\n          \"isAvailable\": true\n        }\n      ]\n    }\n  ]\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Cross-owner menu edit blocked with 403 Forbidden', () => pm.response.to.have.status(403));",
+              "pm.test('Returns FORBIDDEN_ACCESS', () => pm.expect(pm.response.json().errorCode).to.eql('FORBIDDEN_ACCESS'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "21. Public Read - GET Active Restaurant #1 with Full Menu (200 OK)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "{{restaurant1Id}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Public GET /{id} returns 200 OK without auth', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test('Returns full menuCategories intact (not tampered)', () => {",
+              "    pm.expect(json.data.name).to.eql('Spice Route Biryani');",
+              "    pm.expect(json.data.status).to.eql('ACTIVE');",
+              "    pm.expect(json.data.menuCategories[0].name).to.eql('Signature Biryanis');",
+              "    pm.expect(json.data.menuCategories[0].items).to.have.lengthOf(2);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "22. Boundary Guard - Malformed Restaurant ID Rejected (400 REST_002)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/not-a-valid-object-id",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "not-a-valid-object-id"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Malformed ObjectId returns 400 Bad Request', () => pm.response.to.have.status(400));",
+              "pm.test('Returns REST_002', () => pm.expect(pm.response.json().errorCode).to.eql('REST_002'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "23. Pagination Setup - Owner 2 Applies for Restaurant #2 (Same City)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/apply",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "apply"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{owner2Token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Dakshin Spice Kitchen\",\n  \"city\": \"{{cityName}}\",\n  \"cuisineTypes\": [\n    \"South Indian\",\n    \"Dosa\"\n  ]\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Restaurant #2 created (201)', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('restaurant2Id', pm.response.json().data.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "24. Pagination Setup - Admin Approves Restaurant #2 (ACTIVE)",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants/{{restaurant2Id}}/approve",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants",
+            "{{restaurant2Id}}",
+            "approve"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminAccessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Restaurant #2 approved (200)', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25. Public Browse - Composite Cursor Pagination Page 1 (size=1)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants?city={{cityName}}&size=1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants"
+          ],
+          "query": [
+            {
+              "key": "city",
+              "value": "{{cityName}}"
+            },
+            {
+              "key": "size",
+              "value": "1"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200 OK', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json().data;",
+              "pm.test('Returns 1 summary item with hasNext=true and composite cursors', () => {",
+              "    pm.expect(data.items).to.have.lengthOf(1);",
+              "    pm.expect(data.size).to.eql(1);",
+              "    pm.expect(data.hasNext).to.eql(true);",
+              "    pm.expect(data.nextRatingCursor).to.be.a('number');",
+              "    pm.expect(data.nextIdCursor).to.be.a('string').and.not.be.empty;",
+              "    pm.expect(data.items[0]).to.not.have.property('menuCategories');",
+              "});",
+              "pm.collectionVariables.set('page1ItemId', data.items[0].id);",
+              "pm.collectionVariables.set('nextRatingCursor', data.nextRatingCursor.toString());",
+              "pm.collectionVariables.set('nextIdCursor', data.nextIdCursor);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "26. Public Browse - Composite Cursor Pagination Page 2 (No Duplicates)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants?city={{cityName}}&size=1&afterRating={{nextRatingCursor}}&afterId={{nextIdCursor}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants"
+          ],
+          "query": [
+            {
+              "key": "city",
+              "value": "{{cityName}}"
+            },
+            {
+              "key": "size",
+              "value": "1"
+            },
+            {
+              "key": "afterRating",
+              "value": "{{nextRatingCursor}}"
+            },
+            {
+              "key": "afterId",
+              "value": "{{nextIdCursor}}"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200 OK', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json().data;",
+              "pm.test('Returns 2nd distinct restaurant with hasNext=false', () => {",
+              "    pm.expect(data.items).to.have.lengthOf(1);",
+              "    pm.expect(data.items[0].id).to.not.eql(pm.collectionVariables.get('page1ItemId'));",
+              "    pm.expect(data.hasNext).to.eql(false);",
+              "    pm.expect(data.nextIdCursor).to.be.null;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "27. Validation - Partial Cursor Rejected (400 REST_002)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/restaurants?city={{cityName}}&afterRating=4.5",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "restaurants"
+          ],
+          "query": [
+            {
+              "key": "city",
+              "value": "{{cityName}}"
+            },
+            {
+              "key": "afterRating",
+              "value": "4.5"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Partial cursor returns 400 Bad Request', () => pm.response.to.have.status(400));",
+              "pm.test('Returns REST_002', () => pm.expect(pm.response.json().errorCode).to.eql('REST_002'));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
