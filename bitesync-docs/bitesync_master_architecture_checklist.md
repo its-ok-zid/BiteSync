@@ -3,86 +3,92 @@
 This document tracks every enterprise concept, pattern, and tool discussed for the BiteSync Microservices backend.
 
 **Legend:**
-✅ **Completed:** Code is written, tested, and integrated.
-⏳ **Pending:** Planned for an upcoming phase.
+- ✅ **Completed:** Code is written, unit/E2E tested, and integrated.
+- 🔄 **Ongoing:** Implemented and passing for all built modules; continues with each new service.
+- ⏳ **Pending:** Planned for an upcoming sprint/phase.
+
+---
 
 ## 1. Architectural Foundations & Infrastructure
 
-| Status | Concept / Pattern | Description / Implementation Detail | 
-| ----- | ----- | ----- | 
-| ✅ | **Monorepo / Multi-Module Setup** | Maven parent-child POM structure for centralized dependency management. | 
-| ✅ | **Service Registry & Discovery** | Spring Cloud Netflix Eureka Server for dynamic microservice IPs. | 
-| ✅ | **Edge API Gateway** | Spring Cloud Gateway (Reactive/Netty) as the single point of entry. | 
-| ✅ | **Client-Side Load Balancing** | Spring Cloud LoadBalancer integrated into the Gateway (`lb://user-service`). | 
-| ✅ | **Containerization** | Docker & Docker Compose for deterministic local infrastructure (Postgres, Mongo, Redis, Kafka). | 
+| Status | Concept / Pattern | Description / Implementation Detail |
+| :--- | :--- | :--- |
+| ✅ | **Monorepo / Multi-Module Setup** | Maven parent-child POM (`bitesync-parent`) managing 5 child modules cleanly with zero build warnings. |
+| ✅ | **Service Registry & Discovery** | Spring Cloud Netflix Eureka Server (`discovery-server:8761`) with loopback IP pinning (`127.0.0.1`). |
+| ✅ | **Edge API Gateway** | Spring Cloud Gateway (Reactive/Netty, Port `8080`) routing `/api/auth/**`, `/api/users/**`, `/api/restaurants/**`. |
+| ✅ | **Client-Side Load Balancing** | Spring Cloud LoadBalancer integrated into Gateway (`lb://user-service`, `lb://restaurant-service`). |
+| ✅ | **Containerization** | Docker Compose (`docker-compose.infra.yml`) for PostgreSQL, pgAdmin, MongoDB, Redis, Redis Insight, and Kafka (KRaft). |
 
 ## 2. Security & Identity Management
 
-| Status | Concept / Pattern | Description / Implementation Detail | 
-| ----- | ----- | ----- | 
-| ✅ | **Stateless Authentication** | No sessions/cookies stored on servers; completely stateless token-based auth. | 
-| ✅ | **Asymmetric Encryption (RSA)** | RS256 Key Pairs. Private Key signs JWTs (User Service), Public Key verifies them (API Gateway). | 
-| ✅ | **OAuth2 Resource Server** | API Gateway configured to intercept and mathematically validate JWTs. | 
-| ✅ | **Refresh Token Rotation** | Long-lived UUID tokens stored in PostgreSQL for secure access token renewal. | 
-| ✅ | **Distributed Token Blacklisting** | Redis-backed O(1) lookup to invalidate active JWTs upon logout (Stateless Logout). | 
-| ✅ | **Input Sanitization & Validation** | `@Valid`, `@Email`, `@NotBlank` and standard DTO constraints preventing bad data. | 
+| Status | Concept / Pattern | Description / Implementation Detail |
+| :--- | :--- | :--- |
+| ✅ | **Stateless Authentication** | Purely stateless Bearer JWT authentication across Gateway, `user-service`, and `restaurant-service`. |
+| ✅ | **Asymmetric Encryption (RS256)** | 2048-bit RSA Key Pair; Private Key signs in `user-service`, Public Key shared via `/api/auth/certs` JWK endpoint. |
+| ✅ | **OAuth2 Resource Server & RBAC** | Multi-role `Set<Role>` (`roles` claim -> `ROLE_*`), `@PreAuthorize` method security, and JWT `sub` ownership guards. |
+| ✅ | **Refresh Token Lifecycle** | 7-day UUID tokens in PostgreSQL with single-session rotation and full DB revocation on logout. |
+| ✅ | **Distributed Token Blacklisting** | Redis-backed O(1) lookup (`jwt:blacklist:<token>`) enforced reactively in Gateway `BlacklistFilter`. |
+| ✅ | **Input Sanitization & Validation** | `@Valid`, `@Email`, `@NotBlank`, `@DecimalMin`, and `ObjectId.isValid()` boundary validation. |
 
 ## 3. Distributed Data & Communication
 
-| Status | Concept / Pattern | Description / Implementation Detail | 
-| ----- | ----- | ----- | 
-| ⏳ | **Event-Driven Architecture** | Asynchronous messaging using Apache Kafka (KRaft mode). | 
-| ⏳ | **Transactional Outbox Pattern** | Preventing "Dual-Write" failures between saving to DB and publishing to Kafka. | 
-| ⏳ | **Saga Pattern (Choreography)** | Managing distributed transactions across services without 2-Phase Commit (2PC). | 
-| ⏳ | **Synchronous RPC** | Inter-service blocking calls using OpenFeign and/or gRPC. | 
-| ⏳ | **Real-Time Push Notifications** | WebSockets for live delivery tracking to the client. | 
+| Status | Concept / Pattern | Description / Implementation Detail |
+| :--- | :--- | :--- |
+| ⏳ | **Event-Driven Architecture** | Asynchronous messaging using Apache Kafka (KRaft mode) — *Sprint 3B*. |
+| ⏳ | **CQRS** | Separating write commands from optimized read views — *Sprint 3B*. |
+| ⏳ | **Transactional Outbox Pattern** | Preventing "Dual-Write" failures between PostgreSQL and Kafka — *Sprint 3B*. |
+| ⏳ | **Saga Pattern (Choreography)** | Managing distributed transactions across services without 2PC — *Sprint 3B*. |
+| ⏳ | **Synchronous RPC** | Inter-service blocking calls using OpenFeign and/or gRPC — *Phase 4*. |
+| ⏳ | **Real-Time Push Notifications** | WebSockets for live delivery tracking to the client — *Phase 4*. |
 
 ## 4. Database, ORM & Consistency (CAP Theorem)
 
-| Status | Concept / Pattern | Description / Implementation Detail | 
-| ----- | ----- | ----- | 
-| ✅ | **Relational ACID Data (CP)** | PostgreSQL for strict, strongly consistent transactional data (Users, Orders). | 
-| ⏳ | **NoSQL Document Data (AP)** | MongoDB for read-heavy, nested document structures (Restaurant Menus). | 
-| ✅ | **Schema Versioning** | Deterministic database migrations using Flyway. | 
-| ✅ | **Automated Auditing** | JPA `@PrePersist` / `@PreUpdate` for `created_at` and `updated_at`. | 
-| ✅ | **Database Indexing (Basic)** | Created B-Tree indexes on highly queried fields (e.g., `email`, `token`). | 
-| ⏳ | **Pagination & Sorting** | Keyset/Cursor pagination for high-performance feed loading. | 
-| ⏳ | **CAP Theorem Trade-offs** | Tuning Eventual Consistency vs. Strong Consistency based on the domain. | 
+| Status | Concept / Pattern | Description / Implementation Detail |
+| :--- | :--- | :--- |
+| ✅ | **Relational ACID Data (CP)** | PostgreSQL 15 + Spring Data JPA (`ddl-auto: validate`) for strict transactional User data. |
+| ✅ | **NoSQL Document Data (Polyglot)** | MongoDB 6 (`bitesync_menus`) for nested Restaurant & Menu documents with `DECIMAL128` prices. |
+| ✅ | **Schema Versioning** | Deterministic Flyway SQL migrations (`V1`–`V4`) in `user-service`. |
+| ✅ | **Automated Auditing** | JPA `@PrePersist`/`@PreUpdate` in PostgreSQL and `@EnableMongoAuditing` (`@CreatedDate`/`@LastModifiedDate`) in MongoDB. |
+| ✅ | **Database Indexing (B-Tree & ESR)** | Single-field B-Tree indexes (`email`, `token`) + MongoDB ESR compound indexes (`{ cityKey: 1, status: 1, rating: -1, _id: -1 }`). |
+| ✅ | **Pagination & Sorting** | Composite Keyset/Cursor pagination `(afterRating, afterId)` with `limit + 1` zero-count detection. |
+| ✅ | **CAP Theorem Trade-offs** | CP PostgreSQL (`user-service`) paired with CP MongoDB writes + tunable AP eventual-consistency cached reads (`restaurant-service`). |
 
 ## 5. Performance & Caching
 
-| Status | Concept / Pattern | Description / Implementation Detail | 
-| ----- | ----- | ----- | 
-| ⏳ | **Distributed Caching (L2)** | Redis for caching hot database queries across all service instances. | 
-| ⏳ | **Local In-Memory Caching (L1)** | Caffeine cache for ultra-fast, local JVM caching. | 
-| ⏳ | **Multi-Tier Cache Strategy** | Cache-aside and write-through patterns utilizing both L1 and L2. | 
+| Status | Concept / Pattern | Description / Implementation Detail |
+| :--- | :--- | :--- |
+| ✅ | **Local In-Memory Caching (L1)** | Caffeine cache (max 500 entries, 2m hit TTL / 30s negative TTL, single-flight locking, live stats). |
+| ✅ | **Distributed Caching (L2)** | Redis JSON cache (`restaurant:cache:<id>`) with 30m + 0–180s TTL jitter and graceful DB fallback. |
+| ✅ | **Multi-Tier Cache & Pub/Sub Eviction** | Cache-Aside + Evict-on-Write + Redis Pub/Sub (`cache:evict:restaurant`) cross-pod L1 invalidation + negative caching. |
 
 ## 6. Resiliency, Concurrency & API Protection
 
-| Status | Concept / Pattern | Description / Implementation Detail | 
-| ----- | ----- | ----- | 
-| ⏳ | **API Rate Limiting / Throttling** | Redis-backed Token Bucket algorithm in the Gateway to prevent DDoS. | 
-| ⏳ | **Circuit Breaker Pattern** | Resilience4j to fail-fast if a downstream service goes offline. | 
-| ⏳ | **Bulkheads & Time-limiters** | Resilience4j resource isolation and timeout enforcement. | 
-| ⏳ | **API Idempotency** | Preventing duplicate operations (e.g., double charging) using unique idempotency keys. | 
-| ⏳ | **Distributed Locking (Scheduler)** | ShedLock to ensure cron jobs (e.g., batch processing) only run on one instance at a time. | 
+| Status | Concept / Pattern | Description / Implementation Detail |
+| :--- | :--- | :--- |
+| ⏳ | **API Idempotency** | Preventing duplicate mutating operations (e.g., double order/charge) via Idempotency Keys — *Sprint 3B*. |
+| ⏳ | **API Rate Limiting / Throttling** | Redis-backed Token Bucket algorithm in the Gateway — *Phase 4*. |
+| ⏳ | **Circuit Breaker Pattern** | Resilience4j to fail-fast if a downstream service goes offline — *Phase 4*. |
+| ⏳ | **Bulkheads & Time-limiters** | Resilience4j resource isolation and timeout enforcement — *Phase 4*. |
+| ⏳ | **Distributed Locking (Scheduler)** | ShedLock to ensure cron jobs execute on exactly one instance — *Phase 4*. |
+| ⏳ | **Virtual Threads (Project Loom)** | Java 21 Virtual Threads for high-throughput blocking I/O concurrency — *Phase 4*. |
 
 ## 7. Cross-Cutting Concerns & Observability
 
-| Status | Concept / Pattern | Description / Implementation Detail | 
-| ----- | ----- | ----- | 
-| ✅ | **Global Exception Handling** | `@RestControllerAdvice` unifying all errors into a strict JSON contract. | 
-| ✅ | **Universal API Envelopes** | Standardized `ApiResponse<T>` wrapper for every success/error payload. | 
-| ✅ | **Trace ID Generation** | Injecting `X-B3-TraceId` into every HTTP response for log correlation. | 
-| ⏳ | **Distributed Tracing (W3C)** | Micrometer & OpenTelemetry automatically propagating Trace IDs across Kafka and HTTP. | 
-| ⏳ | **Metrics & Monitoring** | Prometheus scraping time-series data and visualizing it in Grafana. | 
+| Status | Concept / Pattern | Description / Implementation Detail |
+| :--- | :--- | :--- |
+| ✅ | **Global Exception Handling** | Shared `@RestControllerAdvice` (`bitesync-common`) unifying errors into `ErrorResponse`. |
+| ✅ | **Universal API Envelopes** | Standardized `ApiResponse<T>` wrapper for every success payload. |
+| ✅ | **Trace ID Correlation** | Extracting `X-B3-TraceId` header (with UUID fallback) into every HTTP success/error response. |
+| ⏳ | **Distributed Tracing (W3C)** | Micrometer & OpenTelemetry automatically propagating Trace IDs across HTTP and Kafka — *Phase 5*. |
+| ⏳ | **Metrics & Monitoring** | Prometheus scraping time-series data and visualizing it in Grafana — *Phase 5*. |
 
 ## 8. Quality Assurance & Engineering Standards
 
-| Status | Concept / Pattern | Description / Implementation Detail | 
-| ----- | ----- | ----- | 
-| ✅ | **API Contracts (Swagger)** | OpenAPI 3.0 specification files manually defined for frontend alignment. | 
-| ✅ | **Automated API Testing** | Postman collections with built-in Javascript tests and environment variables. | 
-| ⏳ | **Unit Testing (Business Logic)** | JUnit 5 & Mockito to test services in isolation without Spring context. | 
-| ⏳ | **Web Layer Testing** | `@WebMvcTest` to test controllers, JSON serialization, and security filters. | 
-| ⏳ | **Integration Testing** | Testcontainers to spin up real Docker DBs during the Maven build phase. | 
+| Status | Concept / Pattern | Description / Implementation Detail |
+| :--- | :--- | :--- |
+| ✅ | **API Contracts (OpenAPI 3.0)** | Synchronized `user-auth-api.yaml` and `restaurant-api.yaml` specs in `bitesync-docs/`. |
+| ✅ | **Automated E2E API Testing** | Single-click Master Postman Collection (`45` requests, `79/79` passing assertions). |
+| 🔄 | **Unit Testing (Business Logic)** | `89` passing JUnit 5 / Mockito / Reactor `StepVerifier` tests across `common`, `gateway`, `user`, and `restaurant` services. |
+| 🔄 | **Web Layer Testing** | `@WebMvcTest` suites validating controllers, DTO validation, JSON contracts, and RBAC security in `user-service` and `restaurant-service`. |
+| ⏳ | **Integration Testing** | Testcontainers spinning up real Docker DBs/Kafka during Maven builds — *Phase 5*. |
+| ⏳ | **Contract Testing & CI/CD** | Spring Cloud Contract & GitHub Actions automated pipelines — *Phase 5*. |

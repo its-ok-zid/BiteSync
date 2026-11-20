@@ -1,0 +1,440 @@
+openapi: 3.0.3
+info:
+  title: BiteSync Restaurant & Menu API
+  description: >-
+    Polyglot NoSQL (MongoDB) restaurant catalog, RBAC onboarding lifecycle,
+    ESR composite cursor pagination, and L1 Caffeine + L2 Redis + Pub/Sub
+    hybrid cached menu API.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: API Gateway (Recommended entry point)
+  - url: http://localhost:8082
+    description: Direct Restaurant Service (Internal)
+
+tags:
+  - name: Public Browse
+  - name: Onboarding & Admin
+  - name: Menu Management
+  - name: Diagnostics (Dev)
+
+paths:
+  /api/restaurants:
+    get:
+      summary: Browse ACTIVE restaurants using ESR composite cursor pagination
+      tags: [Public Browse]
+      parameters:
+        - name: city
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional case-insensitive city filter (indexed via cityKey)
+        - name: afterRating
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+          description: Rating cursor from previous page (must be paired with afterId)
+        - name: afterId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: MongoDB ObjectId cursor from previous page (must be paired with afterRating)
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Paginated summary list of active restaurants (omits menuCategories)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_CursorPage'
+        '400':
+          description: Invalid page size, partial cursor, or malformed ObjectId (REST_002)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/restaurants/{id}:
+    get:
+      summary: Get an ACTIVE restaurant with its full embedded menu (L1 -> L2 -> MongoDB)
+      tags: [Public Browse]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: 65f1a29b4c8e12001a9c4b11
+      responses:
+        '200':
+          description: Active restaurant and embedded menu fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_Restaurant'
+        '400':
+          description: Not found/not active (REST_001) or invalid ObjectId format (REST_002)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/restaurants/apply:
+    post:
+      summary: Submit a new restaurant application (status starts as PENDING_APPROVAL)
+      description: Binds ownerId strictly from the verified JWT subject (sub) claim.
+      tags: [Onboarding & Admin]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestaurantApplyRequest'
+      responses:
+        '201':
+          description: Restaurant application created in PENDING_APPROVAL status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_Restaurant'
+        '400':
+          description: Validation error (VALIDATION_ERROR)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+
+  /api/restaurants/{id}/approve:
+    patch:
+      summary: Approve a pending restaurant (ADMIN only)
+      description: Transitions status to ACTIVE and broadcasts L2 + Pub/Sub L1 cache eviction.
+      tags: [Onboarding & Admin]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Restaurant approved and active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_Restaurant'
+        '400':
+          description: Not found (REST_001), invalid ID (REST_002), or already active (REST_004)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires ADMIN role (FORBIDDEN_ACCESS)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/restaurants/{id}/menu:
+    put:
+      summary: Replace embedded menu categories & items (Owning RESTAURANT_OWNER only)
+      description: Enforces RESTAURANT_OWNER role, JWT sub ownership match, ACTIVE status, and evict-on-write across L2 + Pub/Sub L1.
+      tags: [Menu Management]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuUpdateRequest'
+      responses:
+        '200':
+          description: Restaurant menu updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_Restaurant'
+        '400':
+          description: Validation error, not found (REST_001), invalid ID (REST_002), or restaurant not ACTIVE (REST_005)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Missing RESTAURANT_OWNER role or caller does not own this restaurant (FORBIDDEN_ACCESS)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/restaurants/cache/l1-stats:
+    get:
+      summary: Inspect local pod L1 Caffeine cache statistics (Dev diagnostic endpoint)
+      tags: [Diagnostics (Dev)]
+      responses:
+        '200':
+          description: Live L1 Caffeine hit/miss counts and cached keys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_L1CacheStats'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RestaurantStatus:
+      type: string
+      enum: [PENDING_APPROVAL, ACTIVE, SUSPENDED]
+
+    RestaurantApplyRequest:
+      type: object
+      required: [name, city, cuisineTypes]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+          example: Spice Route Biryani
+        city:
+          type: string
+          minLength: 2
+          maxLength: 80
+          example: Bengaluru
+        cuisineTypes:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          example: [Biryani, North Indian]
+
+    MenuItemDto:
+      type: object
+      required: [name, price]
+      properties:
+        itemId:
+          type: string
+          nullable: true
+          description: Optional; auto-generated as item-<8-hex> if omitted
+          example: item-101
+        name:
+          type: string
+          example: Hyderabadi Chicken Dum Biryani
+        price:
+          type: number
+          minimum: 0.01
+          example: 320.00
+        isAvailable:
+          type: boolean
+          default: true
+        addons:
+          type: array
+          items:
+            type: string
+          example: [Extra Raita, Boiled Egg]
+
+    MenuCategoryDto:
+      type: object
+      required: [name, items]
+      properties:
+        name:
+          type: string
+          example: Signature Biryanis
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuItemDto'
+
+    MenuUpdateRequest:
+      type: object
+      required: [menuCategories]
+      properties:
+        menuCategories:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuCategoryDto'
+
+    RestaurantSummaryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        city:
+          type: string
+        cuisineTypes:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: '#/components/schemas/RestaurantStatus'
+        rating:
+          type: number
+          format: double
+
+    RestaurantResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        ownerId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        city:
+          type: string
+        cuisineTypes:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: '#/components/schemas/RestaurantStatus'
+        rating:
+          type: number
+          format: double
+        menuCategories:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuCategoryDto'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CursorPageResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RestaurantSummaryResponse'
+        size:
+          type: integer
+        hasNext:
+          type: boolean
+        nextRatingCursor:
+          type: number
+          format: double
+          nullable: true
+        nextIdCursor:
+          type: string
+          nullable: true
+
+    L1CacheStatsResponse:
+      type: object
+      properties:
+        estimatedSize:
+          type: integer
+          format: int64
+        hitCount:
+          type: integer
+          format: int64
+        missCount:
+          type: integer
+          format: int64
+        hitRate:
+          type: string
+          example: 80.00%
+        evictionCount:
+          type: integer
+          format: int64
+        cachedEntries:
+          type: object
+          additionalProperties:
+            type: string
+
+    ApiResponse_Restaurant:
+      type: object
+      properties:
+        traceId:
+          type: string
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/RestaurantResponse'
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponse_CursorPage:
+      type: object
+      properties:
+        traceId:
+          type: string
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/CursorPageResponse'
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponse_L1CacheStats:
+      type: object
+      properties:
+        traceId:
+          type: string
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/L1CacheStatsResponse'
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        traceId:
+          type: string
+        errorCode:
+          type: string
+          example: REST_002
+        message:
+          type: string
+          example: Invalid restaurant ID format
+        path:
+          type: string
+          example: /api/restaurants/bad-id
+        status:
+          type: integer
+          example: 400
+        timestamp:
+          type: string
+          format: date-time

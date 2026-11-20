@@ -1,20 +1,28 @@
 openapi: 3.0.3
 info:
-  title: BiteSync Auth API
-  description: Enterprise authentication service for BiteSync using stateless JWTs, RSA key pairs, and Redis-backed token blacklisting.
-  version: 1.0.0
+  title: BiteSync User & Auth API
+  description: >-
+    Enterprise identity provider for BiteSync using stateless RS256 JWTs,
+    multi-role RBAC (Set<Role>), PostgreSQL refresh token lifecycle, and
+    Redis-backed distributed token blacklisting.
+  version: 2.0.0
 servers:
   - url: http://localhost:8080
-    description: API Gateway (Routes to User Service)
+    description: API Gateway (Recommended entry point)
   - url: http://localhost:8081
-    description: Direct User Service (Bypass Gateway)
+    description: Direct User Service (Internal)
+
+tags:
+  - name: Authentication
+  - name: User Profile
+  - name: Admin RBAC
+  - name: Security
 
 paths:
   /api/auth/register:
     post:
-      summary: Register a new user
-      tags:
-        - Authentication
+      summary: Register a new user (always assigned CUSTOMER role)
+      tags: [Authentication]
       requestBody:
         required: true
         content:
@@ -29,7 +37,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse_String'
         '400':
-          description: Validation Error or Email Already Exists
+          description: Validation error (VALIDATION_ERROR) or duplicate email (AUTH_001)
           content:
             application/json:
               schema:
@@ -37,9 +45,8 @@ paths:
 
   /api/auth/login:
     post:
-      summary: Authenticate user and receive JWT
-      tags:
-        - Authentication
+      summary: Authenticate user and issue Access JWT + Refresh Token
+      tags: [Authentication]
       requestBody:
         required: true
         content:
@@ -54,7 +61,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse_LoginResponse'
         '400':
-          description: Invalid credentials
+          description: Invalid credentials (AUTH_002) or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/refresh:
+    post:
+      summary: Exchange a valid Refresh Token for a new short-lived Access JWT
+      description: Public endpoint; does not require a Bearer JWT because the access token may already be expired.
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_RefreshTokenResponse'
+        '400':
+          description: Expired (AUTH_004), invalid/revoked (AUTH_005), or blank token
           content:
             application/json:
               schema:
@@ -62,9 +94,8 @@ paths:
 
   /api/auth/logout:
     post:
-      summary: Logout user and blacklist JWT in Redis
-      tags:
-        - Authentication
+      summary: Logout user, blacklist Access JWT in Redis, and revoke DB Refresh Tokens
+      tags: [Authentication]
       security:
         - bearerAuth: []
       responses:
@@ -75,7 +106,72 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse_String'
         '401':
-          description: Unauthorized (Missing or Invalid Token)
+          description: Missing, invalid, or already blacklisted JWT
+
+  /api/auth/profile:
+    put:
+      summary: Update authenticated user's first and last name
+      tags: [User Profile]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_String'
+        '400':
+          description: Validation error or user not found (AUTH_003)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+
+  /api/auth/users/{userId}/roles:
+    put:
+      summary: Append a role to a user (ADMIN only)
+      tags: [Admin RBAC]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdateRequest'
+      responses:
+        '200':
+          description: User role upgraded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_String'
+        '400':
+          description: Validation error or user not found (AUTH_003)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — requires ADMIN role (FORBIDDEN_ACCESS)
           content:
             application/json:
               schema:
@@ -84,12 +180,11 @@ paths:
   /api/auth/certs:
     get:
       summary: Get RSA Public Keys (JWK Set)
-      description: Used by the API Gateway to mathematically verify JWT signatures.
-      tags:
-        - Security
+      description: Used by API Gateway and downstream resource servers to verify RS256 JWT signatures.
+      tags: [Security]
       responses:
         '200':
-          description: JWK Set containing public keys
+          description: JWK Set containing RSA public key
           content:
             application/json:
               schema:
@@ -103,62 +198,97 @@ components:
       bearerFormat: JWT
 
   schemas:
+    Role:
+      type: string
+      enum: [CUSTOMER, RIDER, RESTAURANT_OWNER, ADMIN, SUPPORT]
+
     RegisterRequest:
       type: object
-      required:
-        - email
-        - password
-        - firstName
-        - lastName
+      required: [email, password, firstName, lastName]
       properties:
         email:
           type: string
           format: email
-          example: rider1@bitesync.com
+          example: customer@bitesync.com
         password:
           type: string
-          example: securepassword
+          minLength: 8
+          example: securepassword123
         firstName:
           type: string
-          example: John
+          example: Aarav
         lastName:
           type: string
-          example: Doe
-        role:
-          type: string
-          enum: [CUSTOMER, RIDER, RESTAURANT_OWNER]
-          default: CUSTOMER
+          example: Sharma
 
     LoginRequest:
       type: object
-      required:
-        - email
-        - password
+      required: [email, password]
       properties:
         email:
           type: string
           format: email
-          example: rider1@bitesync.com
+          example: admin@bitesync.com
         password:
           type: string
-          example: securepassword
+          example: admin123
 
     LoginResponse:
       type: object
       properties:
-        token:
+        accessToken:
           type: string
-          description: Signed JWT Access Token
+          description: Short-lived (15 min) RS256 signed JWT
+        refreshToken:
+          type: string
+          description: Long-lived (7 days) UUID refresh token
         userId:
           type: string
           format: uuid
+        role:
+          type: string
+          description: Comma-separated list of user roles
+          example: CUSTOMER,RIDER
+
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          format: uuid
+
+    RefreshTokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+
+    ProfileUpdateRequest:
+      type: object
+      required: [firstName, lastName]
+      properties:
+        firstName:
+          type: string
+          example: Johnny
+        lastName:
+          type: string
+          example: Bravo
+
+    RoleUpdateRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: '#/components/schemas/Role'
 
     ApiResponse_String:
       type: object
       properties:
         traceId:
           type: string
-          format: uuid
         message:
           type: string
         data:
@@ -173,11 +303,23 @@ components:
       properties:
         traceId:
           type: string
-          format: uuid
         message:
           type: string
         data:
           $ref: '#/components/schemas/LoginResponse'
+        timestamp:
+          type: string
+          format: date-time
+
+    ApiResponse_RefreshTokenResponse:
+      type: object
+      properties:
+        traceId:
+          type: string
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/RefreshTokenResponse'
         timestamp:
           type: string
           format: date-time
@@ -187,7 +329,6 @@ components:
       properties:
         traceId:
           type: string
-          format: uuid
         errorCode:
           type: string
           example: AUTH_001
@@ -220,4 +361,3 @@ components:
                 example: AQAB
               n:
                 type: string
-                description: RSA Modulus
