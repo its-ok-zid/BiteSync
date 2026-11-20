@@ -1,7 +1,12 @@
 package com.bitesync.restaurantservice.controller;
 
 import com.bitesync.common.dto.ApiResponse;
-import com.bitesync.restaurantservice.dto.*;
+import com.bitesync.restaurantservice.dto.CursorPageResponse;
+import com.bitesync.restaurantservice.dto.L1CacheStatsResponse;
+import com.bitesync.restaurantservice.dto.MenuUpdateRequest;
+import com.bitesync.restaurantservice.dto.RestaurantApplyRequest;
+import com.bitesync.restaurantservice.dto.RestaurantResponse;
+import com.bitesync.restaurantservice.dto.RestaurantSummaryResponse;
 import com.bitesync.restaurantservice.service.RestaurantService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -10,9 +15,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -109,7 +121,6 @@ public class RestaurantController {
         return ResponseEntity.ok(response);
     }
 
-    // Dev-only inspection endpoint to view live L1 Caffeine RAM state in Chrome
     // Dev-only inspection endpoint to view live L1 Caffeine RAM state in Chrome
     @GetMapping("/cache/l1-stats")
     public ResponseEntity<ApiResponse<L1CacheStatsResponse>> getL1CacheStats(HttpServletRequest httpRequest) {

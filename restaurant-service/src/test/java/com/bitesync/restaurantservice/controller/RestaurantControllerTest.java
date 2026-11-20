@@ -2,7 +2,14 @@ package com.bitesync.restaurantservice.controller;
 
 import com.bitesync.common.exception.BiteSyncException;
 import com.bitesync.restaurantservice.config.SecurityConfig;
-import com.bitesync.restaurantservice.dto.*;
+import com.bitesync.restaurantservice.dto.CursorPageResponse;
+import com.bitesync.restaurantservice.dto.L1CacheStatsResponse;
+import com.bitesync.restaurantservice.dto.MenuCategoryDto;
+import com.bitesync.restaurantservice.dto.MenuItemDto;
+import com.bitesync.restaurantservice.dto.MenuUpdateRequest;
+import com.bitesync.restaurantservice.dto.RestaurantApplyRequest;
+import com.bitesync.restaurantservice.dto.RestaurantResponse;
+import com.bitesync.restaurantservice.dto.RestaurantSummaryResponse;
 import com.bitesync.restaurantservice.model.MenuCategory;
 import com.bitesync.restaurantservice.model.MenuItem;
 import com.bitesync.restaurantservice.model.RestaurantStatus;
@@ -29,12 +36,22 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = RestaurantController.class)
 @Import(SecurityConfig.class)

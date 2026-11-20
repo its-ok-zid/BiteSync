@@ -50,3 +50,4 @@ This project is structured as a Maven Multi-Module Monorepo. It implements stric
 The required databases, brokers, and telemetry tools are containerized. 
 ```bash
 docker-compose -f docker-compose.infra.yml up -d
+```

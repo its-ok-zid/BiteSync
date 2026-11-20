@@ -2,7 +2,13 @@ package com.bitesync.restaurantservice.service;
 
 import com.bitesync.common.exception.BiteSyncException;
 import com.bitesync.restaurantservice.cache.RestaurantCacheService;
-import com.bitesync.restaurantservice.dto.*;
+import com.bitesync.restaurantservice.dto.CursorPageResponse;
+import com.bitesync.restaurantservice.dto.L1CacheStatsResponse;
+import com.bitesync.restaurantservice.dto.MenuCategoryDto;
+import com.bitesync.restaurantservice.dto.MenuUpdateRequest;
+import com.bitesync.restaurantservice.dto.RestaurantApplyRequest;
+import com.bitesync.restaurantservice.dto.RestaurantResponse;
+import com.bitesync.restaurantservice.dto.RestaurantSummaryResponse;
 import com.bitesync.restaurantservice.model.MenuCategory;
 import com.bitesync.restaurantservice.model.MenuItem;
 import com.bitesync.restaurantservice.model.Restaurant;
@@ -14,7 +20,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -57,7 +62,6 @@ public class RestaurantService {
 
     /**
      * Step 2 of Onboarding: ADMIN activates a pending restaurant.
-     * (Step 4 will add L2 Redis eviction + Redis Pub/Sub L1 invalidation here.)
      */
     public RestaurantResponse approveRestaurant(String restaurantId) {
         validateObjectId(restaurantId);
@@ -81,7 +85,6 @@ public class RestaurantService {
     /**
      * Step 3 of Onboarding: Approved RESTAURANT_OWNER updates their embedded menu.
      * Enforces strict ownership check against JWT 'sub' and requires ACTIVE status.
-     * (Step 4 will add L2 Redis eviction + Redis Pub/Sub L1 invalidation here.)
      */
     public RestaurantResponse updateMenu(String restaurantId, MenuUpdateRequest request, String authenticatedUserId) {
         validateObjectId(restaurantId);
@@ -113,7 +116,6 @@ public class RestaurantService {
     /**
      * Public Read (Single Restaurant + Full Menu):
      * Rejects malformed ObjectIds before hitting MongoDB and hides non-ACTIVE restaurants.
-     * (Step 4 will wrap this with L1 Caffeine -> L2 Redis -> MongoDB + Negative Caching.)
      */
     public RestaurantResponse getActiveRestaurantById(String restaurantId) {
         validateObjectId(restaurantId);
