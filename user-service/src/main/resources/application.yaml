@@ -22,6 +22,11 @@ spring:
         format_sql: true
     show-sql: true # Helpful for learning/debugging
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
   flyway:
     enabled: true
     # Flyway will execute scripts found in classpath:db/migration
