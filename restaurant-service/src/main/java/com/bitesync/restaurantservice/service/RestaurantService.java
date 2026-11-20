@@ -1,6 +1,7 @@
 package com.bitesync.restaurantservice.service;
 
 import com.bitesync.common.exception.BiteSyncException;
+import com.bitesync.restaurantservice.cache.RestaurantCacheService;
 import com.bitesync.restaurantservice.dto.*;
 import com.bitesync.restaurantservice.model.MenuCategory;
 import com.bitesync.restaurantservice.model.MenuItem;
@@ -22,11 +23,14 @@ public class RestaurantService {
     private static final int MAX_PAGE_SIZE = 50;
 
     private final RestaurantRepository restaurantRepository;
+    private final RestaurantCacheService restaurantCacheService;
 
-    public RestaurantService(RestaurantRepository restaurantRepository) {
+    public RestaurantService(
+            RestaurantRepository restaurantRepository,
+            RestaurantCacheService restaurantCacheService) {
         this.restaurantRepository = restaurantRepository;
+        this.restaurantCacheService = restaurantCacheService;
     }
-
     /**
      * Step 1 of Onboarding: Any authenticated user applies to register a restaurant.
      * Owner is strictly bound to the verified JWT 'sub' claim, and status starts as PENDING_APPROVAL.
@@ -66,6 +70,10 @@ public class RestaurantService {
 
         restaurant.setStatus(RestaurantStatus.ACTIVE);
         Restaurant saved = restaurantRepository.save(restaurant);
+
+        // Clears any 30s negative cache sentinel across L2 + all pods' L1
+        restaurantCacheService.evict(restaurantId);
+
         return RestaurantResponse.from(saved);
     }
 
@@ -94,6 +102,10 @@ public class RestaurantService {
 
         restaurant.setMenuCategories(mappedCategories);
         Restaurant saved = restaurantRepository.save(restaurant);
+
+        // Evict-on-write: delete L2 + local L1 + broadcast Pub/Sub invalidation
+        restaurantCacheService.evict(restaurantId);
+
         return RestaurantResponse.from(saved);
     }
 
@@ -105,11 +117,12 @@ public class RestaurantService {
     public RestaurantResponse getActiveRestaurantById(String restaurantId) {
         validateObjectId(restaurantId);
 
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .filter(r -> r.getStatus() == RestaurantStatus.ACTIVE)
-                .orElseThrow(() -> new BiteSyncException("Restaurant not found", "REST_001"));
-
-        return RestaurantResponse.from(restaurant);
+        return restaurantCacheService.getActiveRestaurant(
+                restaurantId,
+                id -> restaurantRepository.findById(id)
+                        .filter(r -> r.getStatus() == RestaurantStatus.ACTIVE)
+                        .map(RestaurantResponse::from)
+        ).orElseThrow(() -> new BiteSyncException("Restaurant not found", "REST_001"));
     }
 
     /**
