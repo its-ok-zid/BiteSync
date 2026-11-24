@@ -75,9 +75,23 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       # Confluent KRaft requires a cluster ID to format the storage automatically
-      CLUSTER_ID: bitesync-cluster-id-123
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     volumes:
       - kafka_data:/var/lib/kafka/data
+    restart: unless-stopped
+
+  # Official Web UI for inspecting Kafka Topics, Partitions, Messages & Consumer Lag
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:latest
+    container_name: bitesync-kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: bitesync-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
     restart: unless-stopped
 
 volumes:
