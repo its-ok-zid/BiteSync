@@ -8,21 +8,11 @@ services:
     environment:
       POSTGRES_USER: bitesync_admin
       POSTGRES_PASSWORD: password123
-      POSTGRES_DB: bitesync_db
+      POSTGRES_DB: bitesync_users
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: bitesync-pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@bitesync.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
     restart: unless-stopped
 
   # NoSQL Document Database for highly nested, read-heavy Restaurant Menus

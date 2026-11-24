@@ -7,7 +7,7 @@ spring:
 
   datasource:
     # Connects to the local PostgreSQL Docker container we started
-    url: jdbc:postgresql://localhost:5432/bitesync_db
+    url: jdbc:postgresql://localhost:5432/bitesync_users
     username: bitesync_admin
     password: password123
     driver-class-name: org.postgresql.Driver
