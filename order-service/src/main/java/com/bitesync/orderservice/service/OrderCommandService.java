@@ -1,10 +1,20 @@
 package com.bitesync.orderservice.service;
 
+import com.bitesync.common.constants.BiteSyncCommonConstants;
 import com.bitesync.common.exception.BiteSyncException;
 import com.bitesync.orderservice.config.KafkaTopicConfig;
-import com.bitesync.orderservice.dto.*;
+import com.bitesync.orderservice.constants.OrderConstants;
+import com.bitesync.orderservice.dto.OrderItemRequest;
+import com.bitesync.orderservice.dto.OrderResponse;
+import com.bitesync.orderservice.dto.PlaceOrderRequest;
+import com.bitesync.orderservice.dto.PlaceOrderResult;
 import com.bitesync.orderservice.event.OrderCreatedEvent;
-import com.bitesync.orderservice.model.*;
+import com.bitesync.orderservice.model.IdempotencyRecord;
+import com.bitesync.orderservice.model.Order;
+import com.bitesync.orderservice.model.OrderItem;
+import com.bitesync.orderservice.model.OrderStatus;
+import com.bitesync.orderservice.model.OutboxEvent;
+import com.bitesync.orderservice.model.OutboxStatus;
 import com.bitesync.orderservice.repository.IdempotencyRecordRepository;
 import com.bitesync.orderservice.repository.OrderRepository;
 import com.bitesync.orderservice.repository.OutboxEventRepository;
@@ -19,7 +29,14 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 @Service
@@ -67,8 +84,8 @@ public class OrderCommandService {
             IdempotencyRecord existing = existingOpt.get();
             if (!existing.getRequestHash().equals(requestHash)) {
                 throw new BiteSyncException(
-                        "Idempotency-Key already used with a different request payload",
-                        "ORDER_003"
+                        OrderConstants.MSG_IDEMPOTENCY_CONFLICT,
+                        OrderConstants.ERROR_IDEMPOTENCY_CONFLICT
                 );
             }
             OrderResponse replayed = deserializeOrderResponse(existing.getResponseBody());
@@ -102,7 +119,7 @@ public class OrderCommandService {
         UUID eventId = UUID.randomUUID();
         OrderCreatedEvent eventPayload = new OrderCreatedEvent(
                 eventId.toString(),
-                "ORDER_CREATED",
+                BiteSyncCommonConstants.EVENT_ORDER_CREATED,
                 savedOrder.getId(),
                 savedOrder.getCustomerId(),
                 savedOrder.getRestaurantId(),
@@ -114,9 +131,9 @@ public class OrderCommandService {
 
         OutboxEvent outboxEvent = new OutboxEvent();
         outboxEvent.setId(eventId);
-        outboxEvent.setAggregateType("ORDER");
+        outboxEvent.setAggregateType(OrderConstants.AGGREGATE_TYPE_ORDER);
         outboxEvent.setAggregateId(savedOrder.getId().toString());
-        outboxEvent.setEventType("ORDER_CREATED");
+        outboxEvent.setEventType(BiteSyncCommonConstants.EVENT_ORDER_CREATED);
         outboxEvent.setTopic(KafkaTopicConfig.ORDER_EVENTS_TOPIC);
         outboxEvent.setPayload(serializeToJson(eventPayload));
         outboxEvent.setStatus(OutboxStatus.PENDING);
@@ -141,11 +158,17 @@ public class OrderCommandService {
 
     private String validateIdempotencyKey(String key) {
         if (key == null || key.isBlank()) {
-            throw new BiteSyncException("Idempotency-Key header is required", "ORDER_002");
+            throw new BiteSyncException(
+                    OrderConstants.MSG_IDEMPOTENCY_KEY_REQUIRED,
+                    OrderConstants.ERROR_INVALID_ORDER_REQUEST
+            );
         }
         String trimmed = key.trim();
         if (trimmed.length() > MAX_IDEMPOTENCY_KEY_LENGTH) {
-            throw new BiteSyncException("Idempotency-Key cannot exceed 128 characters", "ORDER_002");
+            throw new BiteSyncException(
+                    OrderConstants.MSG_IDEMPOTENCY_KEY_TOO_LONG,
+                    OrderConstants.ERROR_INVALID_ORDER_REQUEST
+            );
         }
         return trimmed;
     }
@@ -154,14 +177,20 @@ public class OrderCommandService {
         try {
             return UUID.fromString(subject);
         } catch (Exception ex) {
-            throw new BiteSyncException("Invalid authenticated customer ID", "ORDER_002");
+            throw new BiteSyncException(
+                    OrderConstants.MSG_INVALID_CUSTOMER_ID,
+                    OrderConstants.ERROR_INVALID_ORDER_REQUEST
+            );
         }
     }
 
     private String validateRestaurantId(String restaurantId) {
         String trimmed = (restaurantId != null) ? restaurantId.trim() : "";
         if (!MONGO_OBJECT_ID_PATTERN.matcher(trimmed).matches()) {
-            throw new BiteSyncException("Invalid restaurant ID format", "ORDER_002");
+            throw new BiteSyncException(
+                    OrderConstants.MSG_INVALID_RESTAURANT_ID,
+                    OrderConstants.ERROR_INVALID_ORDER_REQUEST
+            );
         }
         return trimmed;
     }
@@ -173,7 +202,10 @@ public class OrderCommandService {
         for (OrderItemRequest item : rawItems) {
             String cleanItemId = item.itemId().trim();
             if (!seenItemIds.add(cleanItemId)) {
-                throw new BiteSyncException("Duplicate itemId in order request: " + cleanItemId, "ORDER_002");
+                throw new BiteSyncException(
+                        OrderConstants.MSG_DUPLICATE_ITEM_PREFIX + cleanItemId,
+                        OrderConstants.ERROR_INVALID_ORDER_REQUEST
+                );
             }
             normalized.add(new OrderItemRequest(cleanItemId, item.quantity()));
         }
@@ -190,7 +222,10 @@ public class OrderCommandService {
             byte[] hashBytes = digest.digest(canonicalJson.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hashBytes);
         } catch (NoSuchAlgorithmException ex) {
-            throw new BiteSyncException("Failed to hash order request", "ORDER_004");
+            throw new BiteSyncException(
+                    OrderConstants.MSG_HASH_ERROR,
+                    OrderConstants.ERROR_SERIALIZATION
+            );
         }
     }
 
@@ -198,7 +233,10 @@ public class OrderCommandService {
         try {
             return objectMapper.writeValueAsString(obj);
         } catch (JsonProcessingException ex) {
-            throw new BiteSyncException("Failed to serialize order payload", "ORDER_004");
+            throw new BiteSyncException(
+                    OrderConstants.MSG_SERIALIZE_ERROR,
+                    OrderConstants.ERROR_SERIALIZATION
+            );
         }
     }
 
@@ -206,7 +244,10 @@ public class OrderCommandService {
         try {
             return objectMapper.readValue(json, OrderResponse.class);
         } catch (JsonProcessingException ex) {
-            throw new BiteSyncException("Failed to deserialize saved idempotent response", "ORDER_004");
+            throw new BiteSyncException(
+                    OrderConstants.MSG_DESERIALIZE_ERROR,
+                    OrderConstants.ERROR_SERIALIZATION
+            );
         }
     }
 }

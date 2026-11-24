@@ -15,6 +15,12 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
+import static com.bitesync.common.constants.BiteSyncCommonConstants.SECURITY_ROLES_CLAIM;
+import static com.bitesync.userservice.constants.AuthConstants.ERROR_REFRESH_TOKEN_EXPIRED;
+import static com.bitesync.userservice.constants.AuthConstants.JWT_CLAIM_EMAIL;
+import static com.bitesync.userservice.constants.AuthConstants.JWT_ISSUER;
+import static com.bitesync.userservice.constants.AuthConstants.MSG_REFRESH_TOKEN_EXPIRED;
+
 @Service
 public class TokenService {
 
@@ -36,12 +42,12 @@ public class TokenService {
                 .toList();
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer("bitesync-user-service")
+                .issuer(JWT_ISSUER)
                 .issuedAt(now)
                 .expiresAt(now.plus(15, ChronoUnit.MINUTES))
                 .subject(user.getId().toString())
-                .claim("email", user.getEmail())
-                .claim("roles", roleNames) // Changed "role" to "roles" and passing the list!
+                .claim(JWT_CLAIM_EMAIL, user.getEmail())
+                .claim(SECURITY_ROLES_CLAIM, roleNames) // Changed "role" to "roles" and passing the list!
                 .build();
 
         return this.encoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
@@ -72,7 +78,7 @@ public class TokenService {
     public RefreshToken verifyExpiration(RefreshToken token) {
         if (token.getExpiryDate().compareTo(Instant.now()) < 0) {
             refreshTokenRepository.delete(token);
-            throw new BiteSyncException("Refresh token was expired. Please make a new login request", "AUTH_004");
+            throw new BiteSyncException(MSG_REFRESH_TOKEN_EXPIRED, ERROR_REFRESH_TOKEN_EXPIRED);
         }
         return token;
     }

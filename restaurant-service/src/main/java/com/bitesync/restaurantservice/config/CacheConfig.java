@@ -15,10 +15,12 @@ import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+import static com.bitesync.restaurantservice.constants.RestaurantConstants.CACHE_EVICT_CHANNEL;
+
 @Configuration
 public class CacheConfig {
 
-    public static final String RESTAURANT_EVICT_CHANNEL = "cache:evict:restaurant";
+    public static final String RESTAURANT_EVICT_CHANNEL = CACHE_EVICT_CHANNEL;
     public static final long L1_MAX_SIZE = 500;
     public static final long L1_HIT_TTL_MINUTES = 2;
     public static final long L1_NEGATIVE_TTL_SECONDS = 30;

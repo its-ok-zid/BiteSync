@@ -1,5 +1,6 @@
 package com.bitesync.common.exception;
 
+import com.bitesync.common.constants.BiteSyncCommonConstants;
 import com.bitesync.common.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -16,8 +17,9 @@ public class GlobalExceptionHandler {
 
     // Extracts the distributed trace ID injected by the API Gateway or generates a fallback
     private String getTraceId(HttpServletRequest request) {
-        String traceId = request.getHeader("X-B3-TraceId");
-        return (traceId != null && !traceId.isBlank()) ? traceId : UUID.randomUUID().toString();    }
+        String traceId = request.getHeader(BiteSyncCommonConstants.HEADER_TRACE_ID);
+        return (traceId != null && !traceId.isBlank()) ? traceId : UUID.randomUUID().toString();
+    }
 
     // Handles intentional business logic exceptions across all microservices
     @ExceptionHandler(BiteSyncException.class)
@@ -38,11 +40,11 @@ public class GlobalExceptionHandler {
         String errorMessage = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .findFirst()
-                .orElse("Validation failed");
+                .orElse(BiteSyncCommonConstants.MSG_VALIDATION_FAILED);
 
         ErrorResponse errorResponse = new ErrorResponse(
                 getTraceId(request),
-                "VALIDATION_ERROR",
+                BiteSyncCommonConstants.ERROR_VALIDATION,
                 errorMessage,
                 request.getRequestURI(),
                 HttpStatus.BAD_REQUEST.value()
@@ -54,8 +56,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, HttpServletRequest request) {
         ErrorResponse errorResponse = new ErrorResponse(
                 getTraceId(request),
-                "INTERNAL_SERVER_ERROR",
-                "An unexpected error occurred. Please contact support.",
+                BiteSyncCommonConstants.ERROR_INTERNAL_SERVER,
+                BiteSyncCommonConstants.MSG_INTERNAL_SERVER_ERROR,
                 request.getRequestURI(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value()
         );
@@ -66,8 +68,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex, HttpServletRequest request) {
         ErrorResponse errorResponse = new ErrorResponse(
                 getTraceId(request),
-                "FORBIDDEN_ACCESS",
-                "You do not have the required permissions to perform this action.",
+                BiteSyncCommonConstants.ERROR_FORBIDDEN,
+                BiteSyncCommonConstants.MSG_FORBIDDEN,
                 request.getRequestURI(),
                 HttpStatus.FORBIDDEN.value()
         );

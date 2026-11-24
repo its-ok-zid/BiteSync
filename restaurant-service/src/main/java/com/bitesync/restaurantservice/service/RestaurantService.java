@@ -2,6 +2,7 @@ package com.bitesync.restaurantservice.service;
 
 import com.bitesync.common.exception.BiteSyncException;
 import com.bitesync.restaurantservice.cache.RestaurantCacheService;
+import com.bitesync.restaurantservice.constants.RestaurantConstants;
 import com.bitesync.restaurantservice.dto.CursorPageResponse;
 import com.bitesync.restaurantservice.dto.L1CacheStatsResponse;
 import com.bitesync.restaurantservice.dto.MenuCategoryDto;
@@ -37,6 +38,7 @@ public class RestaurantService {
         this.restaurantRepository = restaurantRepository;
         this.restaurantCacheService = restaurantCacheService;
     }
+
     /**
      * Step 1 of Onboarding: Any authenticated user applies to register a restaurant.
      * Owner is strictly bound to the verified JWT 'sub' claim, and status starts as PENDING_APPROVAL.
@@ -67,10 +69,16 @@ public class RestaurantService {
         validateObjectId(restaurantId);
 
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new BiteSyncException("Restaurant not found", "REST_001"));
+                .orElseThrow(() -> new BiteSyncException(
+                        RestaurantConstants.MSG_RESTAURANT_NOT_FOUND,
+                        RestaurantConstants.ERROR_RESTAURANT_NOT_FOUND
+                ));
 
         if (restaurant.getStatus() == RestaurantStatus.ACTIVE) {
-            throw new BiteSyncException("Restaurant is already active", "REST_004");
+            throw new BiteSyncException(
+                    RestaurantConstants.MSG_ALREADY_ACTIVE,
+                    RestaurantConstants.ERROR_ALREADY_ACTIVE
+            );
         }
 
         restaurant.setStatus(RestaurantStatus.ACTIVE);
@@ -90,14 +98,20 @@ public class RestaurantService {
         validateObjectId(restaurantId);
 
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new BiteSyncException("Restaurant not found", "REST_001"));
+                .orElseThrow(() -> new BiteSyncException(
+                        RestaurantConstants.MSG_RESTAURANT_NOT_FOUND,
+                        RestaurantConstants.ERROR_RESTAURANT_NOT_FOUND
+                ));
 
         if (!restaurant.getOwnerId().equals(authenticatedUserId)) {
-            throw new AccessDeniedException("You do not own this restaurant");
+            throw new AccessDeniedException(RestaurantConstants.MSG_NOT_OWNER);
         }
 
         if (restaurant.getStatus() != RestaurantStatus.ACTIVE) {
-            throw new BiteSyncException("Cannot update menu until restaurant is ACTIVE", "REST_005");
+            throw new BiteSyncException(
+                    RestaurantConstants.MSG_NOT_ACTIVE_FOR_MENU,
+                    RestaurantConstants.ERROR_NOT_ACTIVE_FOR_MENU
+            );
         }
 
         List<MenuCategory> mappedCategories = request.menuCategories().stream()
@@ -125,7 +139,10 @@ public class RestaurantService {
                 id -> restaurantRepository.findById(id)
                         .filter(r -> r.getStatus() == RestaurantStatus.ACTIVE)
                         .map(RestaurantResponse::from)
-        ).orElseThrow(() -> new BiteSyncException("Restaurant not found", "REST_001"));
+        ).orElseThrow(() -> new BiteSyncException(
+                RestaurantConstants.MSG_RESTAURANT_NOT_FOUND,
+                RestaurantConstants.ERROR_RESTAURANT_NOT_FOUND
+        ));
     }
 
     /**
@@ -139,15 +156,18 @@ public class RestaurantService {
             int size) {
 
         if (size < MIN_PAGE_SIZE || size > MAX_PAGE_SIZE) {
-            throw new BiteSyncException("Page size must be between 1 and 50", "REST_002");
+            throw new BiteSyncException(
+                    RestaurantConstants.MSG_INVALID_PAGE_SIZE,
+                    RestaurantConstants.ERROR_INVALID_REQUEST
+            );
         }
 
         boolean hasRating = afterRating != null;
         boolean hasId = afterId != null && !afterId.isBlank();
         if (hasRating != hasId) {
             throw new BiteSyncException(
-                    "Both afterRating and afterId must be provided together for cursor pagination",
-                    "REST_002"
+                    RestaurantConstants.MSG_PARTIAL_CURSOR,
+                    RestaurantConstants.ERROR_INVALID_REQUEST
             );
         }
 
@@ -188,7 +208,10 @@ public class RestaurantService {
 
     private void validateObjectId(String id) {
         if (id == null || !ObjectId.isValid(id)) {
-            throw new BiteSyncException("Invalid restaurant ID format", "REST_002");
+            throw new BiteSyncException(
+                    RestaurantConstants.MSG_INVALID_RESTAURANT_ID,
+                    RestaurantConstants.ERROR_INVALID_REQUEST
+            );
         }
     }
 

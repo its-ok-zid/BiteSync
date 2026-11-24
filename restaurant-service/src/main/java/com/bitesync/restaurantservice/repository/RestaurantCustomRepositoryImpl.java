@@ -1,6 +1,7 @@
 package com.bitesync.restaurantservice.repository;
 
 import com.bitesync.common.exception.BiteSyncException;
+import com.bitesync.restaurantservice.constants.RestaurantConstants;
 import com.bitesync.restaurantservice.model.Restaurant;
 import com.bitesync.restaurantservice.model.RestaurantStatus;
 import org.bson.types.ObjectId;
@@ -39,7 +40,10 @@ public class RestaurantCustomRepositoryImpl implements RestaurantCustomRepositor
         // Composite Keyset / Cursor condition: (rating < afterRating) OR (rating == afterRating AND _id < afterId)
         if (afterRating != null && afterId != null && !afterId.isBlank()) {
             if (!ObjectId.isValid(afterId)) {
-                throw new BiteSyncException("Invalid pagination cursor ID format", "REST_002");
+                throw new BiteSyncException(
+                        RestaurantConstants.MSG_INVALID_CURSOR_ID,
+                        RestaurantConstants.ERROR_INVALID_REQUEST
+                );
             }
             ObjectId cursorObjectId = new ObjectId(afterId);
 

@@ -1,6 +1,8 @@
 package com.bitesync.restaurantservice.controller;
 
+import com.bitesync.common.constants.BiteSyncCommonConstants;
 import com.bitesync.common.dto.ApiResponse;
+import com.bitesync.restaurantservice.constants.RestaurantConstants;
 import com.bitesync.restaurantservice.dto.CursorPageResponse;
 import com.bitesync.restaurantservice.dto.L1CacheStatsResponse;
 import com.bitesync.restaurantservice.dto.MenuUpdateRequest;
@@ -50,7 +52,7 @@ public class RestaurantController {
 
         ApiResponse<CursorPageResponse<RestaurantSummaryResponse>> response = new ApiResponse<>(
                 resolveTraceId(httpRequest),
-                "Restaurants fetched successfully",
+                RestaurantConstants.MSG_RESTAURANTS_FETCHED,
                 page
         );
         return ResponseEntity.ok(response);
@@ -64,7 +66,7 @@ public class RestaurantController {
         RestaurantResponse data = restaurantService.getActiveRestaurantById(id);
         ApiResponse<RestaurantResponse> response = new ApiResponse<>(
                 resolveTraceId(httpRequest),
-                "Restaurant fetched successfully",
+                RestaurantConstants.MSG_RESTAURANT_FETCHED,
                 data
         );
         return ResponseEntity.ok(response);
@@ -83,7 +85,7 @@ public class RestaurantController {
 
         ApiResponse<RestaurantResponse> response = new ApiResponse<>(
                 resolveTraceId(httpRequest),
-                "Restaurant application submitted successfully",
+                RestaurantConstants.MSG_APPLICATION_SUBMITTED,
                 created
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -98,7 +100,7 @@ public class RestaurantController {
         RestaurantResponse approved = restaurantService.approveRestaurant(id);
         ApiResponse<RestaurantResponse> response = new ApiResponse<>(
                 resolveTraceId(httpRequest),
-                "Restaurant approved successfully",
+                RestaurantConstants.MSG_RESTAURANT_APPROVED,
                 approved
         );
         return ResponseEntity.ok(response);
@@ -115,7 +117,7 @@ public class RestaurantController {
         RestaurantResponse updated = restaurantService.updateMenu(id, request, jwt.getSubject());
         ApiResponse<RestaurantResponse> response = new ApiResponse<>(
                 resolveTraceId(httpRequest),
-                "Restaurant menu updated successfully",
+                RestaurantConstants.MSG_MENU_UPDATED,
                 updated
         );
         return ResponseEntity.ok(response);
@@ -126,14 +128,14 @@ public class RestaurantController {
     public ResponseEntity<ApiResponse<L1CacheStatsResponse>> getL1CacheStats(HttpServletRequest httpRequest) {
         ApiResponse<L1CacheStatsResponse> response = new ApiResponse<>(
                 resolveTraceId(httpRequest),
-                "L1 Caffeine cache snapshot fetched",
+                RestaurantConstants.MSG_L1_STATS_FETCHED,
                 restaurantService.getL1CacheSnapshot()
         );
         return ResponseEntity.ok(response);
     }
 
     private String resolveTraceId(HttpServletRequest request) {
-        String traceId = request.getHeader("X-B3-TraceId");
+        String traceId = request.getHeader(BiteSyncCommonConstants.HEADER_TRACE_ID);
         return (traceId != null && !traceId.isBlank()) ? traceId : UUID.randomUUID().toString();
     }
 }

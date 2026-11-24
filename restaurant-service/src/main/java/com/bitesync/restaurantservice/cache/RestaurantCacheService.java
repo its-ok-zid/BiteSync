@@ -1,5 +1,6 @@
 package com.bitesync.restaurantservice.cache;
 
+import com.bitesync.restaurantservice.constants.RestaurantConstants;
 import com.bitesync.restaurantservice.dto.L1CacheStatsResponse;
 import com.bitesync.restaurantservice.dto.RestaurantResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -24,8 +25,8 @@ public class RestaurantCacheService {
 
     private static final Logger log = LoggerFactory.getLogger(RestaurantCacheService.class);
 
-    static final String L2_KEY_PREFIX = "restaurant:cache:";
-    static final String NOT_FOUND_SENTINEL = "__NOT_FOUND__";
+    static final String L2_KEY_PREFIX = RestaurantConstants.CACHE_L2_KEY_PREFIX;
+    static final String NOT_FOUND_SENTINEL = RestaurantConstants.CACHE_NOT_FOUND_SENTINEL;
     static final long L2_BASE_TTL_MINUTES = 30;
     static final long L2_MAX_JITTER_SECONDS = 180;
     static final Duration L2_NEGATIVE_TTL = Duration.ofSeconds(30);
@@ -191,5 +192,4 @@ public class RestaurantCacheService {
             log.warn("[CACHE WARN] Redis DELETE failed for key={}: {}", redisKey, ex.getMessage());
         }
     }
-
 }

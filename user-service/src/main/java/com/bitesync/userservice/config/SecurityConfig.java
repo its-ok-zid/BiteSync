@@ -28,6 +28,9 @@ import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 
+import static com.bitesync.common.constants.BiteSyncCommonConstants.SECURITY_ROLES_CLAIM;
+import static com.bitesync.common.constants.BiteSyncCommonConstants.SECURITY_ROLE_PREFIX;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -74,8 +77,8 @@ public class SecurityConfig {
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
-        grantedAuthoritiesConverter.setAuthoritiesClaimName("roles"); // Matches TokenService!
+        grantedAuthoritiesConverter.setAuthorityPrefix(SECURITY_ROLE_PREFIX);
+        grantedAuthoritiesConverter.setAuthoritiesClaimName(SECURITY_ROLES_CLAIM); // Matches TokenService!
 
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
