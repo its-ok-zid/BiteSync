@@ -3,7 +3,11 @@ package com.bitesync.userservice.controller;
 import com.bitesync.common.exception.BiteSyncException;
 import com.bitesync.common.security.TokenBlacklistService;
 import com.bitesync.userservice.config.SecurityConfig;
-import com.bitesync.userservice.dto.*;
+import com.bitesync.userservice.dto.LoginRequest;
+import com.bitesync.userservice.dto.ProfileUpdateRequest;
+import com.bitesync.userservice.dto.RefreshTokenRequest;
+import com.bitesync.userservice.dto.RegisterRequest;
+import com.bitesync.userservice.dto.RoleUpdateRequest;
 import com.bitesync.userservice.model.RefreshToken;
 import com.bitesync.userservice.model.Role;
 import com.bitesync.userservice.model.User;
@@ -34,15 +38,30 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = AuthController.class)
 @Import(SecurityConfig.class)

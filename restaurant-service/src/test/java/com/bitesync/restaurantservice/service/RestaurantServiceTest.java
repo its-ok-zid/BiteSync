@@ -2,7 +2,14 @@ package com.bitesync.restaurantservice.service;
 
 import com.bitesync.common.exception.BiteSyncException;
 import com.bitesync.restaurantservice.cache.RestaurantCacheService;
-import com.bitesync.restaurantservice.dto.*;
+import com.bitesync.restaurantservice.dto.CursorPageResponse;
+import com.bitesync.restaurantservice.dto.L1CacheStatsResponse;
+import com.bitesync.restaurantservice.dto.MenuCategoryDto;
+import com.bitesync.restaurantservice.dto.MenuItemDto;
+import com.bitesync.restaurantservice.dto.MenuUpdateRequest;
+import com.bitesync.restaurantservice.dto.RestaurantApplyRequest;
+import com.bitesync.restaurantservice.dto.RestaurantResponse;
+import com.bitesync.restaurantservice.dto.RestaurantSummaryResponse;
 import com.bitesync.restaurantservice.model.Restaurant;
 import com.bitesync.restaurantservice.model.RestaurantStatus;
 import com.bitesync.restaurantservice.repository.RestaurantRepository;
@@ -22,10 +29,18 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RestaurantServiceTest {
