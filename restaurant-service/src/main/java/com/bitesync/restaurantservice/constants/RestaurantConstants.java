@@ -15,6 +15,13 @@ public final class RestaurantConstants {
     public static final String CACHE_L2_KEY_PREFIX = "restaurant:cache:";
     public static final String CACHE_NOT_FOUND_SENTINEL = "__NOT_FOUND__";
 
+    // Kafka Saga
+    public static final String KAFKA_GROUP_SAGA = "restaurant-order-saga-group";
+    public static final String MSG_SAGA_RESTAURANT_NOT_FOUND = "Restaurant does not exist";
+    public static final String MSG_SAGA_RESTAURANT_NOT_ACTIVE = "Restaurant is not currently accepting orders";
+    public static final String MSG_SAGA_ITEM_NOT_FOUND_PREFIX = "Menu item not found: ";
+    public static final String MSG_SAGA_ITEM_UNAVAILABLE_PREFIX = "Menu item is currently unavailable: ";
+
     // Error Messages
     public static final String MSG_RESTAURANT_NOT_FOUND = "Restaurant not found";
     public static final String MSG_INVALID_RESTAURANT_ID = "Invalid restaurant ID format";

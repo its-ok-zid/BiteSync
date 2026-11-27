@@ -10,10 +10,14 @@ public final class OrderConstants {
     public static final String ERROR_IDEMPOTENCY_CONFLICT = "ORDER_003";
     public static final String ERROR_SERIALIZATION = "ORDER_004";
 
-    // Aggregate Types
+    // Aggregate Types & Kafka Consumer Groups
     public static final String AGGREGATE_TYPE_ORDER = "ORDER";
+    public static final String KAFKA_GROUP_SAGA = "order-saga-group";
+    public static final String KAFKA_GROUP_PROJECTOR = "order-query-projector";
 
     // Error Messages
+    public static final String MSG_ORDER_NOT_FOUND = "Order not found";
+    public static final String MSG_ORDER_ACCESS_DENIED = "You do not have permission to view this order";
     public static final String MSG_IDEMPOTENCY_KEY_REQUIRED = "Idempotency-Key header is required";
     public static final String MSG_IDEMPOTENCY_KEY_TOO_LONG = "Idempotency-Key cannot exceed 128 characters";
     public static final String MSG_IDEMPOTENCY_CONFLICT = "Idempotency-Key already used with a different request payload";
@@ -27,4 +31,6 @@ public final class OrderConstants {
     // Success Messages
     public static final String MSG_ORDER_PLACED = "Order placed successfully";
     public static final String MSG_ORDER_REPLAYED = "Order already processed (idempotent replay)";
+    public static final String MSG_ORDERS_FETCHED = "Orders fetched successfully";
+    public static final String MSG_ORDER_FETCHED = "Order fetched successfully";
 }

@@ -28,6 +28,8 @@ public final class BiteSyncCommonConstants {
     public static final String TOPIC_RESTAURANT_EVENTS = "bitesync.restaurant.events";
 
     public static final String EVENT_ORDER_CREATED = "ORDER_CREATED";
+    public static final String EVENT_ORDER_CONFIRMED = "ORDER_CONFIRMED";
+    public static final String EVENT_ORDER_CANCELLED = "ORDER_CANCELLED";
     public static final String EVENT_RESTAURANT_ORDER_ACCEPTED = "RESTAURANT_ORDER_ACCEPTED";
     public static final String EVENT_RESTAURANT_ORDER_REJECTED = "RESTAURANT_ORDER_REJECTED";
 }
