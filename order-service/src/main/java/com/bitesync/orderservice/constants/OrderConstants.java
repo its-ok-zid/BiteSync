@@ -23,10 +23,12 @@ public final class OrderConstants {
     public static final String MSG_IDEMPOTENCY_CONFLICT = "Idempotency-Key already used with a different request payload";
     public static final String MSG_INVALID_RESTAURANT_ID = "Invalid restaurant ID format";
     public static final String MSG_INVALID_CUSTOMER_ID = "Invalid authenticated customer ID";
+    public static final String MSG_INVALID_ORDER_ID = "Invalid order ID format";
     public static final String MSG_DUPLICATE_ITEM_PREFIX = "Duplicate itemId in order request: ";
     public static final String MSG_HASH_ERROR = "Failed to hash order request";
     public static final String MSG_SERIALIZE_ERROR = "Failed to serialize order payload";
     public static final String MSG_DESERIALIZE_ERROR = "Failed to deserialize saved idempotent response";
+    public static final String MSG_DESERIALIZE_ITEMS_ERROR = "Failed to deserialize order items summary";
 
     // Success Messages
     public static final String MSG_ORDER_PLACED = "Order placed successfully";
