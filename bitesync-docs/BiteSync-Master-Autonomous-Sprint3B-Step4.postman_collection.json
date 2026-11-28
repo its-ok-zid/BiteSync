@@ -1,0 +1,3385 @@
+{
+  "info": {
+    "_postman_id": "bitesync-master-autonomous-sprint3b-step4",
+    "name": "BiteSync Master API (Autonomous E2E - Phases 1, 2, 3A & 3B Step 4)",
+    "description": "Complete single-click, infinitely re-runnable Master E2E Postman Collection covering API Gateway, user-service (Auth, Refresh, Logout Blacklist, Multi-Role RBAC), restaurant-service (MongoDB Onboarding, Ownership Isolation, ESR Composite Cursor Pagination, Hybrid L1/L2/Pub-Sub Caching, Kafka Order Validation Saga), and order-service (Command Side, SHA-256 API Idempotency, Transactional Outbox, Choreography Saga, and CQRS Read Model Projection & Query API).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "runId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cityName",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminAccessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerAccessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerRefreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner1Email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner1UserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner1Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner2Email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner2UserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner2Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "buyerEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "buyerUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "buyerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "restaurant1Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "restaurant2Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pendingRestaurantId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "page1ItemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "nextRatingCursor",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "nextIdCursor",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "l1HitsBefore",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "orderIdempotencyKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "order1Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderRejectedMissingItemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderRejectedSoldOutId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderRejectedPendingRestId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderRejectedMissingRestId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Auth, JWT Lifecycle & RBAC (user-service + api-gateway)",
+      "item": [
+        {
+          "name": "1.01 Login as Seeded Super Admin (Bootstrap)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@bitesync.com\",\n  \"password\": \"admin123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const runId = Date.now().toString();",
+                  "pm.collectionVariables.set('runId', runId);",
+                  "pm.collectionVariables.set('customerEmail', 'customer.' + runId + '@bitesync.com');",
+                  "pm.collectionVariables.set('owner1Email', 'owner1.' + runId + '@bitesync.com');",
+                  "pm.collectionVariables.set('owner2Email', 'owner2.' + runId + '@bitesync.com');",
+                  "pm.collectionVariables.set('buyerEmail', 'buyer.' + runId + '@bitesync.com');",
+                  "pm.collectionVariables.set('cityName', 'Bengaluru-' + runId);",
+                  "pm.collectionVariables.set('orderIdempotencyKey', 'idem-' + runId + '-001');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Admin JWT and ADMIN role returned', () => {",
+                  "    pm.expect(json.data.accessToken).to.be.a('string').and.not.be.empty;",
+                  "    pm.expect(json.data.role).to.include('ADMIN');",
+                  "});",
+                  "pm.collectionVariables.set('adminAccessToken', json.data.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.02 Get Public RSA JWK Certs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/certs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "certs"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Exposes RSA public key JWK', () => {",
+                  "    pm.expect(json.keys).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(json.keys[0].kty).to.eql('RSA');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.03 Register Customer (Defaults to CUSTOMER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"securepassword123\",\n  \"firstName\": \"Zidan\",\n  \"lastName\": \"Ali\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Returns ApiResponse envelope', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.traceId).to.be.a('string');",
+                  "    pm.expect(json.message).to.eql('User registered successfully');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.04 Register Validation Guard (400 VALIDATION_ERROR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"short\",\n  \"firstName\": \"\",\n  \"lastName\": \"\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid payload returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is VALIDATION_ERROR', () => pm.expect(pm.response.json().errorCode).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.05 Register Duplicate Email Guard (400 AUTH_001)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"securepassword123\",\n  \"firstName\": \"Zidan\",\n  \"lastName\": \"Ali\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Duplicate email returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is AUTH_001', () => pm.expect(pm.response.json().errorCode).to.eql('AUTH_001'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.06 Login Customer (Capture Access & Refresh Tokens)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"securepassword123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Tokens and default CUSTOMER role returned', () => {",
+                  "    pm.expect(data.accessToken).to.be.a('string').and.not.be.empty;",
+                  "    pm.expect(data.refreshToken).to.be.a('string').and.not.be.empty;",
+                  "    pm.expect(data.role).to.eql('CUSTOMER');",
+                  "});",
+                  "pm.collectionVariables.set('customerAccessToken', data.accessToken);",
+                  "pm.collectionVariables.set('customerRefreshToken', data.refreshToken);",
+                  "pm.collectionVariables.set('customerUserId', data.userId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.07 Update Profile (Authenticated PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "profile"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Zidan\",\n  \"lastName\": \"Updated\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Profile updated message', () => pm.expect(pm.response.json().message).to.eql('Profile updated successfully'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.08 Refresh Access Token (No Bearer JWT Required)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{customerRefreshToken}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200 without Bearer token', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Fresh accessToken issued', () => pm.expect(data.accessToken).to.be.a('string').and.not.be.empty);",
+                  "pm.collectionVariables.set('customerAccessToken', data.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.09 RBAC Guard - Customer Cannot Upgrade Own Role (403)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/users/{{customerUserId}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "users",
+                "{{customerUserId}}",
+                "roles"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Non-admin role upgrade blocked with 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Error code is FORBIDDEN_ACCESS', () => pm.expect(pm.response.json().errorCode).to.eql('FORBIDDEN_ACCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.10 Admin Appends RIDER Role to Customer (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/users/{{customerUserId}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "users",
+                "{{customerUserId}}",
+                "roles"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"RIDER\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Role upgraded message', () => pm.expect(pm.response.json().message).to.eql('User role upgraded successfully'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.11 Re-Login Customer (Verifies Multi-Role CUSTOMER + RIDER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"securepassword123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('User holds both CUSTOMER and RIDER roles', () => {",
+                  "    pm.expect(data.role).to.include('CUSTOMER');",
+                  "    pm.expect(data.role).to.include('RIDER');",
+                  "});",
+                  "pm.collectionVariables.set('customerAccessToken', data.accessToken);",
+                  "pm.collectionVariables.set('customerRefreshToken', data.refreshToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.12 Logout (Blacklists JWT in Redis & Revokes Refresh Token)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Logged out message', () => pm.expect(pm.response.json().message).to.eql('Logged out successfully'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.13 Blacklist Enforcement - Logged-out JWT Blocked at Gateway (401)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "profile"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Blocked\",\n  \"lastName\": \"User\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Blacklisted JWT blocked with 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.14 Revoked Refresh Token Blocked After Logout (400 AUTH_005)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{customerRefreshToken}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Revoked refresh token rejected with 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is AUTH_005', () => pm.expect(pm.response.json().errorCode).to.eql('AUTH_005'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Restaurant Onboarding, Menu RBAC & Cursor Pagination (restaurant-service)",
+      "item": [
+        {
+          "name": "2.01 Register Owner 1 (Defaults to CUSTOMER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{owner1Email}}\",\n  \"password\": \"securepassword123\",\n  \"firstName\": \"Aarav\",\n  \"lastName\": \"Sharma\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.02 Login Owner 1 (CUSTOMER JWT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{owner1Email}}\",\n  \"password\": \"securepassword123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.collectionVariables.set('owner1Token', data.accessToken);",
+                  "pm.collectionVariables.set('owner1UserId', data.userId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.03 Security - Unauthenticated Apply Blocked (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "apply"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ghost Kitchen\",\n  \"city\": \"{{cityName}}\",\n  \"cuisineTypes\": [\n    \"Fast Food\"\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthenticated /apply returns 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.04 Validation - Apply with Invalid Payload Rejected (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "apply"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"A\",\n  \"city\": \"\",\n  \"cuisineTypes\": []\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is VALIDATION_ERROR', () => pm.expect(pm.response.json().errorCode).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.05 Onboarding - Owner 1 Applies for Restaurant #1 (201 PENDING_APPROVAL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "apply"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Spice Route Biryani\",\n  \"city\": \"{{cityName}}\",\n  \"cuisineTypes\": [\n    \"Biryani\",\n    \"North Indian\",\n    \"Biryani\"\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201 Created', () => pm.response.to.have.status(201));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Bound to JWT sub with PENDING_APPROVAL and deduped cuisines', () => {",
+                  "    pm.expect(data.ownerId).to.eql(pm.collectionVariables.get('owner1UserId'));",
+                  "    pm.expect(data.status).to.eql('PENDING_APPROVAL');",
+                  "    pm.expect(data.cuisineTypes).to.have.lengthOf(2);",
+                  "});",
+                  "pm.collectionVariables.set('restaurant1Id', data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.06 Visibility & Negative Cache - Pending Restaurant Hidden (400 REST_001)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant1Id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Pending restaurant hidden (400)', () => pm.response.to.have.status(400));",
+                  "pm.test('Returns REST_001', () => pm.expect(pm.response.json().errorCode).to.eql('REST_001'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.07 RBAC - CUSTOMER Cannot Approve Restaurant (403)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant1Id}}",
+                "approve"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Error code is FORBIDDEN_ACCESS', () => pm.expect(pm.response.json().errorCode).to.eql('FORBIDDEN_ACCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.08 RBAC - Admin Grants RESTAURANT_OWNER Role to Owner 1",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/users/{{owner1UserId}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "users",
+                "{{owner1UserId}}",
+                "roles"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"RESTAURANT_OWNER\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.09 Auth - Owner 1 Re-Logins for RESTAURANT_OWNER JWT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{owner1Email}}\",\n  \"password\": \"securepassword123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Contains RESTAURANT_OWNER role', () => pm.expect(data.role).to.include('RESTAURANT_OWNER'));",
+                  "pm.collectionVariables.set('owner1Token', data.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.10 State Guard - Owner Cannot Edit Menu While PENDING (400 REST_005)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/menu",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant1Id}}",
+                "menu"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"menuCategories\": [\n    {\n      \"name\": \"Biryanis\",\n      \"items\": [\n        {\n          \"name\": \"Chicken Biryani\",\n          \"price\": 320.0,\n          \"isAvailable\": true\n        }\n      ]\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is REST_005', () => pm.expect(pm.response.json().errorCode).to.eql('REST_005'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.11 Onboarding - Admin Approves Restaurant #1 (Evicts Negative Cache)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant1Id}}",
+                "approve"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status is ACTIVE', () => pm.expect(pm.response.json().data.status).to.eql('ACTIVE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.12 State Guard - Duplicate Approval Rejected (400 REST_004)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant1Id}}",
+                "approve"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is REST_004', () => pm.expect(pm.response.json().errorCode).to.eql('REST_004'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.13 Menu - Owner 1 Updates Embedded Menu on Restaurant #1 (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/menu",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant1Id}}",
+                "menu"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"menuCategories\": [\n    {\n      \"name\": \"Signature Biryanis\",\n      \"items\": [\n        {\n          \"itemId\": \"item-101\",\n          \"name\": \"Hyderabadi Chicken Dum Biryani\",\n          \"price\": 320.0,\n          \"isAvailable\": true,\n          \"addons\": [\n            \"Extra Raita\",\n            \"Boiled Egg\"\n          ]\n        },\n        {\n          \"name\": \"Paneer Subz Biryani\",\n          \"price\": 270.0,\n          \"isAvailable\": true,\n          \"addons\": [\n            \"Mirchi Ka Salan\"\n          ]\n        }\n      ]\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json().data.menuCategories[0].items;",
+                  "pm.test('Menu items persisted with DECIMAL128 price and auto itemId', () => {",
+                  "    pm.expect(items).to.have.lengthOf(2);",
+                  "    pm.expect(items[0].itemId).to.eql('item-101');",
+                  "    pm.expect(items[0].price).to.eql(320);",
+                  "    pm.expect(items[1].itemId).to.match(/^item-/);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.14 Setup - Register, Upgrade & Login Owner 2 (Cross-Owner Test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{owner2Email}}\",\n  \"password\": \"securepassword123\",\n  \"firstName\": \"Riya\",\n  \"lastName\": \"Verma\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner 2 registered (201)', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.15 Setup - Login Owner 2 (Capture ID)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{owner2Email}}\",\n  \"password\": \"securepassword123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('owner2UserId', pm.response.json().data.userId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.16 Setup - Admin Grants RESTAURANT_OWNER to Owner 2",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/users/{{owner2UserId}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "users",
+                "{{owner2UserId}}",
+                "roles"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"RESTAURANT_OWNER\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.17 Setup - Login Owner 2 (RESTAURANT_OWNER JWT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{owner2Email}}\",\n  \"password\": \"securepassword123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('owner2Token', pm.response.json().data.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.18 Ownership Guard - Owner 2 Cannot Tamper with Owner 1 Menu (403)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/menu",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant1Id}}",
+                "menu"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"menuCategories\": [\n    {\n      \"name\": \"Hacked\",\n      \"items\": [\n        {\n          \"name\": \"Free\",\n          \"price\": 1.0,\n          \"isAvailable\": true\n        }\n      ]\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cross-owner edit returns 403 Forbidden', () => pm.response.to.have.status(403));",
+                  "pm.test('Error code is FORBIDDEN_ACCESS', () => pm.expect(pm.response.json().errorCode).to.eql('FORBIDDEN_ACCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.19 Boundary Guard - Malformed ObjectId Rejected Before DB/Cache (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/not-a-valid-object-id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "not-a-valid-object-id"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is REST_002', () => pm.expect(pm.response.json().errorCode).to.eql('REST_002'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.20 Pagination Setup - Owner 2 Applies for Restaurant #2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "apply"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dakshin Spice Kitchen\",\n  \"city\": \"{{cityName}}\",\n  \"cuisineTypes\": [\n    \"South Indian\",\n    \"Dosa\"\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('restaurant2Id', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.21 Pagination Setup - Admin Approves Restaurant #2",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/{{restaurant2Id}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant2Id}}",
+                "approve"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.22 Composite Cursor Pagination - Page 1 (size=1)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants?city={{cityName}}&size=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants"
+              ],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "{{cityName}}"
+                },
+                {
+                  "key": "size",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Summary page with hasNext=true and composite cursors', () => {",
+                  "    pm.expect(data.items).to.have.lengthOf(1);",
+                  "    pm.expect(data.hasNext).to.eql(true);",
+                  "    pm.expect(data.nextRatingCursor).to.be.a('number');",
+                  "    pm.expect(data.nextIdCursor).to.be.a('string').and.not.be.empty;",
+                  "    pm.expect(data.items[0]).to.not.have.property('menuCategories');",
+                  "});",
+                  "pm.collectionVariables.set('page1ItemId', data.items[0].id);",
+                  "pm.collectionVariables.set('nextRatingCursor', data.nextRatingCursor.toString());",
+                  "pm.collectionVariables.set('nextIdCursor', data.nextIdCursor);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.23 Composite Cursor Pagination - Page 2 (Zero Duplicates)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants?city={{cityName}}&size=1&afterRating={{nextRatingCursor}}&afterId={{nextIdCursor}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants"
+              ],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "{{cityName}}"
+                },
+                {
+                  "key": "size",
+                  "value": "1"
+                },
+                {
+                  "key": "afterRating",
+                  "value": "{{nextRatingCursor}}"
+                },
+                {
+                  "key": "afterId",
+                  "value": "{{nextIdCursor}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Distinct 2nd item returned and hasNext=false', () => {",
+                  "    pm.expect(data.items).to.have.lengthOf(1);",
+                  "    pm.expect(data.items[0].id).to.not.eql(pm.collectionVariables.get('page1ItemId'));",
+                  "    pm.expect(data.hasNext).to.eql(false);",
+                  "    pm.expect(data.nextIdCursor).to.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.24 Validation - Partial Cursor Rejected (400 REST_002)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants?city={{cityName}}&afterRating=4.5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants"
+              ],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "{{cityName}}"
+                },
+                {
+                  "key": "afterRating",
+                  "value": "4.5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is REST_002', () => pm.expect(pm.response.json().errorCode).to.eql('REST_002'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Hybrid L1 Caffeine + L2 Redis + Pub/Sub Eviction Verification",
+      "item": [
+        {
+          "name": "3.01 Cold Read - Populates L2 Redis & L1 Caffeine (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant1Id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Initial price is 320', () => {",
+                  "    pm.expect(data.menuCategories[0].items[0].price).to.eql(320);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.02 Inspect L1 Stats - Restaurant #1 Cached in JVM RAM",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/cache/l1-stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "cache",
+                "l1-stats"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "const id = pm.collectionVariables.get('restaurant1Id');",
+                  "pm.test('Restaurant #1 is present in L1 Caffeine cachedEntries', () => {",
+                  "    pm.expect(data.cachedEntries).to.have.property(id);",
+                  "    pm.expect(data.cachedEntries[id]).to.include('Spice Route Biryani');",
+                  "});",
+                  "pm.collectionVariables.set('l1HitsBefore', data.hitCount.toString());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.03 Warm Read - Served Directly from L1 Caffeine RAM (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant1Id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns Spice Route Biryani', () => pm.expect(pm.response.json().data.name).to.eql('Spice Route Biryani'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.04 Inspect L1 Stats - Verify L1 hitCount Incremented",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/cache/l1-stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "cache",
+                "l1-stats"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "const prevHits = parseInt(pm.collectionVariables.get('l1HitsBefore'), 10);",
+                  "pm.test('L1 hitCount increased by at least 1', () => {",
+                  "    pm.expect(data.hitCount).to.be.at.least(prevHits + 1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.05 Evict-on-Write - Owner 1 Updates Price (320 -> 349) & Adds Sold-Out Item",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}/menu",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant1Id}}",
+                "menu"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"menuCategories\": [\n    {\n      \"name\": \"Signature Biryanis\",\n      \"items\": [\n        {\n          \"itemId\": \"item-101\",\n          \"name\": \"Hyderabadi Chicken Dum Biryani\",\n          \"price\": 349.0,\n          \"isAvailable\": true,\n          \"addons\": [\n            \"Extra Raita\",\n            \"Boiled Egg\"\n          ]\n        },\n        {\n          \"itemId\": \"item-102\",\n          \"name\": \"Sold Out Mutton Haleem\",\n          \"price\": 450.0,\n          \"isAvailable\": false,\n          \"addons\": []\n        }\n      ]\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json().data.menuCategories[0].items;",
+                  "pm.test('Reflects updated price 349 and unavailable item-102 for Saga tests', () => {",
+                  "    pm.expect(items[0].price).to.eql(349);",
+                  "    pm.expect(items[1].itemId).to.eql('item-102');",
+                  "    pm.expect(items[1].isAvailable).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.06 Inspect L1 Stats - Confirm Restaurant #1 Evicted from L1 RAM",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/cache/l1-stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "cache",
+                "l1-stats"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "const id = pm.collectionVariables.get('restaurant1Id');",
+                  "pm.test('Restaurant #1 is no longer in L1 cachedEntries after eviction', () => {",
+                  "    pm.expect(data.cachedEntries).to.not.have.property(id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.07 Post-Eviction Read - Serves Fresh Price (349) & Re-Populates Cache",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/{{restaurant1Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "{{restaurant1Id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Fresh MongoDB truth (price 349) returned with zero stale data', () => {",
+                  "    pm.expect(pm.response.json().data.menuCategories[0].items[0].price).to.eql(349);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Order Command, Idempotency, Outbox & Choreography Saga (Sprint 3B \u2014 Step 3)",
+      "item": [
+        {
+          "name": "4.01 Setup - Register Order Buyer (CUSTOMER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{buyerEmail}}\",\n  \"password\": \"securepassword123\",\n  \"firstName\": \"Kiran\",\n  \"lastName\": \"Rao\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Buyer registered (201)', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.02 Setup - Login Order Buyer (Capture CUSTOMER JWT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{buyerEmail}}\",\n  \"password\": \"securepassword123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Buyer JWT & userId captured', () => {",
+                  "    pm.expect(data.accessToken).to.be.a('string').and.not.be.empty;",
+                  "    pm.expect(data.role).to.eql('CUSTOMER');",
+                  "});",
+                  "pm.collectionVariables.set('buyerToken', data.accessToken);",
+                  "pm.collectionVariables.set('buyerUserId', data.userId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.03 Security - Unauthenticated POST /api/orders Blocked (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "unauth-key-001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurant1Id}}\",\n  \"items\": [\n    {\n      \"itemId\": \"item-101\",\n      \"quantity\": 2\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthenticated order placement returns 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.04 Guard - Missing Idempotency-Key Header Rejected (400 ORDER_002)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurant1Id}}\",\n  \"items\": [\n    {\n      \"itemId\": \"item-101\",\n      \"quantity\": 2\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Missing Idempotency-Key returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is ORDER_002', () => pm.expect(pm.response.json().errorCode).to.eql('ORDER_002'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.05 Validation - Malformed restaurantId Rejected (400 ORDER_002)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "bad-rest-{{runId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"not-a-valid-objectid\",\n  \"items\": [\n    {\n      \"itemId\": \"item-101\",\n      \"quantity\": 2\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Malformed restaurantId returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is ORDER_002', () => pm.expect(pm.response.json().errorCode).to.eql('ORDER_002'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.06 Validation - Duplicate itemId Rejected (400 ORDER_002)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "dup-item-{{runId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurant1Id}}\",\n  \"items\": [\n    {\n      \"itemId\": \"item-101\",\n      \"quantity\": 1\n    },\n    {\n      \"itemId\": \"item-101\",\n      \"quantity\": 2\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Duplicate itemId returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is ORDER_002', () => pm.expect(pm.response.json().errorCode).to.eql('ORDER_002'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.07 Validation - Invalid Quantity (0) Rejected by @Valid (400 VALIDATION_ERROR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "bad-qty-{{runId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurant1Id}}\",\n  \"items\": [\n    {\n      \"itemId\": \"item-101\",\n      \"quantity\": 0\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Zero quantity returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is VALIDATION_ERROR', () => pm.expect(pm.response.json().errorCode).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.08 Saga Happy Path - Place Order #1 (2x item-101 -> Async CONFIRMED 698.00)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{orderIdempotencyKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurant1Id}}\",\n  \"items\": [\n    {\n      \"itemId\": \"item-101\",\n      \"quantity\": 2\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('First call is NOT an idempotent replay', () => {",
+                  "    pm.expect(pm.response.headers.has('X-Idempotent-Replay')).to.eql(false);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Order persisted as PENDING bound to JWT sub with zero-trust pricing', () => {",
+                  "    pm.expect(json.message).to.eql('Order placed successfully');",
+                  "    pm.expect(json.data.orderId).to.be.a('string').and.not.be.empty;",
+                  "    pm.expect(json.data.customerId).to.eql(pm.collectionVariables.get('buyerUserId'));",
+                  "    pm.expect(json.data.restaurantId).to.eql(pm.collectionVariables.get('restaurant1Id'));",
+                  "    pm.expect(json.data.status).to.eql('PENDING');",
+                  "    pm.expect(json.data.totalAmount).to.eql(0);",
+                  "    pm.expect(json.data.items).to.have.lengthOf(1);",
+                  "    pm.expect(json.data.items[0].itemId).to.eql('item-101');",
+                  "    pm.expect(json.data.items[0].quantity).to.eql(2);",
+                  "});",
+                  "pm.collectionVariables.set('order1Id', json.data.orderId);",
+                  "console.log('[SAGA HAPPY PATH -> EXPECT CONFIRMED 698.00] orderId=' + json.data.orderId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.09 Idempotent Replay - Same Key & Payload Replays Exact Order (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{orderIdempotencyKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurant1Id}}\",\n  \"items\": [\n    {\n      \"itemId\": \"item-101\",\n      \"quantity\": 2\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Replayed status code is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('X-Idempotent-Replay header is true', () => {",
+                  "    pm.expect(pm.response.headers.get('X-Idempotent-Replay')).to.eql('true');",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Returns exact same orderId with zero duplicate creation', () => {",
+                  "    pm.expect(json.message).to.eql('Order already processed (idempotent replay)');",
+                  "    pm.expect(json.data.orderId).to.eql(pm.collectionVariables.get('order1Id'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.10 Idempotency Conflict - Same Key with Tampered Payload Rejected (400 ORDER_003)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{orderIdempotencyKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurant1Id}}\",\n  \"items\": [\n    {\n      \"itemId\": \"item-101\",\n      \"quantity\": 5\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Reusing Idempotency-Key with different payload returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is ORDER_003', () => pm.expect(pm.response.json().errorCode).to.eql('ORDER_003'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.11 Saga Rollback #1 - Non-Existent Item (item-999 -> Async CANCELLED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "idem-{{runId}}-reject-item"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurant1Id}}\",\n  \"items\": [\n    {\n      \"itemId\": \"item-999\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Accepted as 201 PENDING for async Saga validation', () => pm.response.to.have.status(201));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Order starts PENDING before Kafka rejection rollback', () => {",
+                  "    pm.expect(data.status).to.eql('PENDING');",
+                  "    pm.expect(data.orderId).to.be.a('string').and.not.be.empty;",
+                  "});",
+                  "pm.collectionVariables.set('orderRejectedMissingItemId', data.orderId);",
+                  "console.log('[SAGA ROLLBACK #1 -> EXPECT CANCELLED: Menu item not found: item-999] orderId=' + data.orderId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.12 Saga Rollback #2 - Sold-Out Item (item-102 -> Async CANCELLED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "idem-{{runId}}-reject-soldout"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{restaurant1Id}}\",\n  \"items\": [\n    {\n      \"itemId\": \"item-102\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Accepted as 201 PENDING for async Saga validation', () => pm.response.to.have.status(201));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Order starts PENDING before sold-out rollback', () => {",
+                  "    pm.expect(data.status).to.eql('PENDING');",
+                  "    pm.expect(data.orderId).to.be.a('string').and.not.be.empty;",
+                  "});",
+                  "pm.collectionVariables.set('orderRejectedSoldOutId', data.orderId);",
+                  "console.log('[SAGA ROLLBACK #2 -> EXPECT CANCELLED: Menu item is currently unavailable: Sold Out Mutton Haleem] orderId=' + data.orderId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.13 Saga Setup - Owner 2 Applies for Unapproved Restaurant #3 (PENDING_APPROVAL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/restaurants/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restaurants",
+                "apply"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pending Approval Kitchen\",\n  \"city\": \"{{cityName}}\",\n  \"cuisineTypes\": [\n    \"Continental\"\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Pending restaurant created (201)', () => pm.response.to.have.status(201));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Status remains PENDING_APPROVAL', () => pm.expect(data.status).to.eql('PENDING_APPROVAL'));",
+                  "pm.collectionVariables.set('pendingRestaurantId', data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.14 Saga Rollback #3 - Order to Unapproved Restaurant (Async CANCELLED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "idem-{{runId}}-reject-pending-rest"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"{{pendingRestaurantId}}\",\n  \"items\": [\n    {\n      \"itemId\": \"item-101\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Accepted as 201 PENDING for async Saga validation', () => pm.response.to.have.status(201));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Order starts PENDING before inactive-restaurant rollback', () => {",
+                  "    pm.expect(data.status).to.eql('PENDING');",
+                  "    pm.expect(data.orderId).to.be.a('string').and.not.be.empty;",
+                  "});",
+                  "pm.collectionVariables.set('orderRejectedPendingRestId', data.orderId);",
+                  "console.log('[SAGA ROLLBACK #3 -> EXPECT CANCELLED: Restaurant is not currently accepting orders] orderId=' + data.orderId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.15 Saga Rollback #4 - Order to Non-Existent Restaurant (Async CANCELLED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "idem-{{runId}}-reject-missing-rest"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": \"000000000000000000000000\",\n  \"items\": [\n    {\n      \"itemId\": \"item-101\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Accepted as 201 PENDING for async Saga validation', () => pm.response.to.have.status(201));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Order starts PENDING before missing-restaurant rollback', () => {",
+                  "    pm.expect(data.status).to.eql('PENDING');",
+                  "    pm.expect(data.orderId).to.be.a('string').and.not.be.empty;",
+                  "});",
+                  "pm.collectionVariables.set('orderRejectedMissingRestId', data.orderId);",
+                  "console.log('[SAGA ROLLBACK #4 -> EXPECT CANCELLED: Restaurant does not exist] orderId=' + data.orderId);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. CQRS Read Model & Order Query API (order-service \u2014 Step 4)",
+      "item": [
+        {
+          "name": "5.01 CQRS Query - Wait for Async Saga & Verify Order #1 CONFIRMED (698.00)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{order1Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{order1Id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Allow both async Outbox Relay + Kafka Saga + CQRS Projector hops to settle (~5.5s)",
+                  "setTimeout(() => {}, 5500);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200 OK', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('CQRS Read View reflects CONFIRMED order with authoritative pricing (2 x 349 = 698)', () => {",
+                  "    pm.expect(data.orderId).to.eql(pm.collectionVariables.get('order1Id'));",
+                  "    pm.expect(data.customerId).to.eql(pm.collectionVariables.get('buyerUserId'));",
+                  "    pm.expect(data.restaurantId).to.eql(pm.collectionVariables.get('restaurant1Id'));",
+                  "    pm.expect(data.restaurantName).to.eql('Spice Route Biryani');",
+                  "    pm.expect(data.status).to.eql('CONFIRMED');",
+                  "    pm.expect(data.totalAmount).to.eql(698);",
+                  "    pm.expect(data.itemCount).to.eql(2);",
+                  "    pm.expect(data.cancellationReason).to.be.null;",
+                  "    pm.expect(data.items).to.have.lengthOf(1);",
+                  "    pm.expect(data.items[0].itemId).to.eql('item-101');",
+                  "    pm.expect(data.items[0].itemName).to.eql('Hyderabadi Chicken Dum Biryani');",
+                  "    pm.expect(data.items[0].unitPrice).to.eql(349);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.02 CQRS Query - Verify Saga Rollback #1 CANCELLED (Missing Item)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderRejectedMissingItemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderRejectedMissingItemId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200 OK', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Order cancelled with missing-item reason', () => {",
+                  "    pm.expect(data.status).to.eql('CANCELLED');",
+                  "    pm.expect(data.totalAmount).to.eql(0);",
+                  "    pm.expect(data.cancellationReason).to.eql('Menu item not found: item-999');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.03 CQRS Query - Verify Saga Rollback #2 CANCELLED (Sold-Out Item)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderRejectedSoldOutId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderRejectedSoldOutId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200 OK', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Order cancelled with sold-out reason', () => {",
+                  "    pm.expect(data.status).to.eql('CANCELLED');",
+                  "    pm.expect(data.cancellationReason).to.eql('Menu item is currently unavailable: Sold Out Mutton Haleem');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.04 CQRS Query - Verify Saga Rollback #3 CANCELLED (Unapproved Restaurant)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderRejectedPendingRestId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderRejectedPendingRestId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200 OK', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Order cancelled with inactive-restaurant reason', () => {",
+                  "    pm.expect(data.status).to.eql('CANCELLED');",
+                  "    pm.expect(data.cancellationReason).to.eql('Restaurant is not currently accepting orders');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.05 CQRS Query - Verify Saga Rollback #4 CANCELLED (Non-Existent Restaurant)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderRejectedMissingRestId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderRejectedMissingRestId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200 OK', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Order cancelled with restaurant-not-found reason', () => {",
+                  "    pm.expect(data.status).to.eql('CANCELLED');",
+                  "    pm.expect(data.cancellationReason).to.eql('Restaurant does not exist');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.06 CQRS List - Buyer Lists All Own Orders from order_summary_view (Zero JOINs)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Returns all 5 projected orders for buyer ordered newest-first', () => {",
+                  "    pm.expect(json.message).to.eql('Orders fetched successfully');",
+                  "    pm.expect(json.data).to.be.an('array').with.lengthOf(5);",
+                  "    const ids = json.data.map(o => o.orderId);",
+                  "    pm.expect(ids).to.include(pm.collectionVariables.get('order1Id'));",
+                  "    pm.expect(ids).to.include(pm.collectionVariables.get('orderRejectedMissingItemId'));",
+                  "    pm.expect(ids).to.include(pm.collectionVariables.get('orderRejectedSoldOutId'));",
+                  "    pm.expect(ids).to.include(pm.collectionVariables.get('orderRejectedPendingRestId'));",
+                  "    pm.expect(ids).to.include(pm.collectionVariables.get('orderRejectedMissingRestId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.07 Ownership Guard - Different User Cannot Read Buyer's Order (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{order1Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{order1Id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cross-customer order read returns 403 Forbidden', () => pm.response.to.have.status(403));",
+                  "pm.test('Error code is FORBIDDEN_ACCESS', () => pm.expect(pm.response.json().errorCode).to.eql('FORBIDDEN_ACCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.08 Admin Override - ADMIN Can Inspect Any Customer Order (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{order1Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{order1Id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin read override succeeds with 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns buyer orderId', () => pm.expect(pm.response.json().data.orderId).to.eql(pm.collectionVariables.get('order1Id')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.09 Security - Unauthenticated GET /api/orders Blocked (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthenticated GET /api/orders returns 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.10 Boundary Guard - Malformed Order UUID Rejected (400 ORDER_002)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/not-a-valid-uuid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "not-a-valid-uuid"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Malformed UUID returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is ORDER_002', () => pm.expect(pm.response.json().errorCode).to.eql('ORDER_002'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.11 Boundary Guard - Unknown Order UUID Returns Not Found (400 ORDER_001)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Non-existent order returns 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error code is ORDER_001', () => pm.expect(pm.response.json().errorCode).to.eql('ORDER_001'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
